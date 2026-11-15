@@ -7,15 +7,21 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 <style>
   :root{ --ink:#1b1210; }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;min-height:100%;background:#ffffff;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#ffffff;}
   body{
     font-family:'Pathway Extreme',sans-serif;color:var(--ink);
-    min-height:100vh;display:flex;flex-direction:column;
+    height:100vh;display:flex;flex-direction:column;position:relative;
+  }
+  #fxCanvas{
+    position:absolute;inset:0;width:100%;height:100%;
+    pointer-events:none;z-index:1;
   }
   .topbar{
+    position:relative;z-index:2;
     display:flex;justify-content:space-between;align-items:flex-start;
     padding:28px 7vw 0;
   }
@@ -26,6 +32,7 @@
   .brandmark{font-family:'Notable',sans-serif;font-size:18px;letter-spacing:0.02em;opacity:0.85;}
 
   .center{
+    position:relative;z-index:2;
     flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
     padding:20px 7vw 60px;text-align:center;
   }
@@ -50,28 +57,160 @@
 </style>
 </head>
 <body>
+  <canvas id="fxCanvas"></canvas>
+
   <div class="topbar">
     <a class="back" href="index.html">&larr; BACK</a>
     <div class="brandmark">APPLE NO.129</div>
   </div>
 
   <div class="center">
-    <span class="kicker">Step 1</span>
-    <h1>How do you want to shape it?</h1>
+    <span class="kicker" id="kickerEl">Step 1</span>
+    <h1 id="titleEl">How do you want to shape it?</h1>
     <div class="cards">
-      <a class="card" href="builder.html">
+      <a class="card" id="cardModel" href="builder.html">
         <div class="card-icon">&#x1F34E;</div>
         <h2>Model it in 3D</h2>
-        <p>Stretch, rotate and colour a real apple mesh with your mouse. Precise, sculptural.</p>
+        <p>Stretch, rotate and colour a real apple mesh with your mouse.</p>
         <div class="go">Start modelling &rarr;</div>
       </a>
-      <a class="card" href="draw.html">
+      <a class="card" id="cardDraw" href="draw.html">
         <div class="card-icon">&#9998;&#65039;</div>
         <h2>Draw it by hand</h2>
-        <p>No template, no rules — just a blank canvas and a brush. Whatever comes out, comes out.</p>
+        <p>Use the drawing tools to create your own apple, or upload a photo of one you've already drawn.</p>
         <div class="go">Start drawing &rarr;</div>
       </a>
     </div>
   </div>
+
+<script>
+/* ============ falling-apple physics (same as landing page) ============ */
+const { Engine, World, Bodies, Body, Composite } = Matter;
+
+const engine = Engine.create();
+engine.gravity.y = 1.1;
+
+const canvas = document.getElementById('fxCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+function sizeCanvas(){
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width = W+'px';
+  canvas.style.height = H+'px';
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+sizeCanvas();
+
+let staticBodies = [];
+
+function buildStaticBodies(){
+  if(staticBodies.length){
+    Composite.remove(engine.world, staticBodies);
+  }
+  staticBodies = [];
+
+  // text and cards have no collision body here: apples fall straight past
+  // them (behind them, visually) and only pile up on the floor.
+  staticBodies.push(Bodies.rectangle(W/2, H+20, W*2, 40, {isStatic:true}));
+  staticBodies.push(Bodies.rectangle(-20, H/2, 40, H*2, {isStatic:true}));
+  staticBodies.push(Bodies.rectangle(W+20, H/2, 40, H*2, {isStatic:true}));
+
+  Composite.add(engine.world, staticBodies);
+}
+buildStaticBodies();
+
+const apples = [];
+const COLORS = ['#c8102e','#e0453a','#e8c13a','#8fbf4f','#d9752c','#b23a52'];
+
+const appleIcon = new Image();
+appleIcon.src = 'assets/apple-icon.png';
+let tintedIcons = [];
+let iconReady = false;
+appleIcon.onload = () => {
+  tintedIcons = COLORS.map(color=>{
+    const c = document.createElement('canvas');
+    c.width = 128; c.height = 128;
+    const cctx = c.getContext('2d');
+    cctx.drawImage(appleIcon, 0, 0, 128, 128);
+    cctx.globalCompositeOperation = 'source-atop';
+    cctx.fillStyle = color;
+    cctx.fillRect(0,0,128,128);
+    const grad = cctx.createRadialGradient(50,46,2, 50,46,22);
+    grad.addColorStop(0,'rgba(255,255,255,0.85)');
+    grad.addColorStop(1,'rgba(255,255,255,0)');
+    cctx.fillStyle = grad;
+    cctx.fillRect(0,0,128,128);
+    return c;
+  });
+  iconReady = true;
+};
+
+function spawnApple(){
+  if(apples.length > 42) return;
+  const r = 12 + Math.random()*14;
+  const x = 20 + Math.random()*(W-40);
+  const body = Bodies.circle(x, -40, r, {
+    restitution: 0.35,
+    friction: 0.5,
+    frictionAir: 0.001,
+    density: 0.002
+  });
+  Body.setAngularVelocity(body, (Math.random()-0.5)*0.2);
+  Composite.add(engine.world, body);
+  apples.push({ body, r, colorIndex: Math.floor(Math.random()*COLORS.length) });
+}
+
+function drawApple(a){
+  const { x, y } = a.body.position;
+  const angle = a.body.angle;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(angle);
+  if(iconReady){
+    const icon = tintedIcons[a.colorIndex];
+    const d = a.r*2.5;
+    ctx.drawImage(icon, -d/2, -d/2, d, d);
+  } else {
+    ctx.beginPath();
+    ctx.arc(0,0,a.r,0,Math.PI*2);
+    ctx.fillStyle = COLORS[a.colorIndex];
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+let lastSpawn = 0;
+function loop(ts){
+  if(ts - lastSpawn > 450){
+    spawnApple();
+    lastSpawn = ts;
+  }
+  Engine.update(engine, 1000/60);
+  ctx.clearRect(0,0,W,H);
+  for(let i=apples.length-1;i>=0;i--){
+    const a = apples[i];
+    if(a.body.position.y > H + 200){
+      Composite.remove(engine.world, a.body);
+      apples.splice(i,1);
+      continue;
+    }
+    drawApple(a);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(()=>{
+    sizeCanvas();
+    buildStaticBodies();
+  }, 150);
+});
+</script>
 </body>
 </html>

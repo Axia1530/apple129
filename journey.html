@@ -34,12 +34,7 @@
     aspect-ratio:4/3;
   }
   .bg-painting{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-  .bg-cert{
-    position:absolute;inset:0;background:#fff;border:3px solid #c8102e;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;
-  }
-  .bg-cert .stamp{font-family:'Notable',sans-serif;font-size:13px;letter-spacing:0.06em;color:#c8102e;border:2px solid #c8102e;border-radius:6px;padding:4px 10px;}
-  .bg-cert .spec{font-family:'Pathway Extreme',sans-serif;font-weight:700;font-size:12px;text-align:center;opacity:0.7;}
+  .bg-blank{position:absolute;inset:0;background:#ffffff;}
 
   .apple-layer{
     position:absolute;cursor:grab;touch-action:none;user-select:none;-webkit-user-drag:none;
@@ -53,8 +48,6 @@
     display:none;box-shadow:0 2px 5px rgba(0,0,0,0.3);
   }
 
-  .placeholder{text-align:center;padding:30px;color:#9a8c84;font-size:13px;line-height:1.6;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-  .placeholder b{display:block;font-size:15px;color:#6b5b52;margin-bottom:8px;}
 
   .story{max-width:560px;font-size:13.5px;line-height:1.6;text-align:center;opacity:0.8;min-height:60px;}
   .drag-hint{font-size:11px;opacity:0.45;margin-top:-6px;}
@@ -86,13 +79,9 @@
 
   <div class="viewer" id="viewer">
     <img class="bg-painting" id="bgPainting" style="display:none;">
-    <div class="bg-cert" id="bgCert" style="display:none;">
-      <div class="stamp">NO.129</div>
-      <div class="spec">68&ndash;71mm &middot; 140&ndash;155g &middot; Extra / I / II</div>
-    </div>
+    <div class="bg-blank" id="bgBlank" style="display:none;"></div>
     <img class="apple-layer" id="appleLayer" draggable="false">
     <div class="resize-handle" id="resizeHandle"></div>
-    <div class="placeholder" id="placeholder" style="display:none;"><b>Coming soon</b>The painting for this stop isn&rsquo;t in yet &mdash; the story above is real, the picture is on its way.</div>
   </div>
 
   <div class="story" id="eraStory">Story text.</div>
@@ -135,7 +124,7 @@ const ERAS = [
     ready:false },
   { id:'today', year:'Today', title:'Count-128',
     story:"Today's apple has no painter, no myth, no story — only a specification. Extra Class, Class I, Class II: a 20kg box of 128 apples, each between 68 and 71mm. This is the only apple most of us will ever actually touch.",
-    ready:true, cert:true, slot:{ left:50, top:35, width:26 } }
+    ready:true, slot:{ left:50, top:35, width:26 } }
 ];
 
 let artwork = null;
@@ -146,10 +135,9 @@ const viewer = document.getElementById('viewer');
 const timeline = document.getElementById('timeline');
 const trackFill = document.getElementById('trackFill');
 const bgPainting = document.getElementById('bgPainting');
-const bgCert = document.getElementById('bgCert');
+const bgBlank = document.getElementById('bgBlank');
 const appleLayer = document.getElementById('appleLayer');
 const resizeHandle = document.getElementById('resizeHandle');
-const placeholder = document.getElementById('placeholder');
 const dragHint = document.getElementById('dragHint');
 
 function buildTicks(){
@@ -193,39 +181,39 @@ function renderEra(i){
   const era = ERAS[i];
   document.getElementById('eraYear').textContent = era.year;
   document.getElementById('eraTitle').textContent = era.title;
-  document.getElementById('eraStory').textContent = era.story;
 
   document.querySelectorAll('.tick').forEach(t=> t.classList.toggle('active', +t.dataset.index === i));
   document.querySelectorAll('.tick-label').forEach(t=> t.classList.toggle('active', +t.dataset.index === i));
   trackFill.style.width = ((i/(ERAS.length-1))*100)+'%';
 
   bgPainting.style.display = 'none';
-  bgCert.style.display = 'none';
+  bgBlank.style.display = 'none';
   appleLayer.style.display = 'none';
   resizeHandle.style.display = 'none';
-  placeholder.style.display = 'none';
   dragHint.style.display = 'none';
 
-  if(!era.ready){
-    placeholder.style.display = 'flex';
-    return;
-  }
+  const isCezanne = era.id === 'cezanne';
+  const storyEl = document.getElementById('eraStory');
 
-  if(era.cert){
-    bgCert.style.display = 'flex';
-  } else {
+  if(isCezanne){
     bgPainting.src = era.bg;
     bgPainting.style.display = 'block';
     bgPainting.onerror = ()=> showErr('could not load image: ' + era.bg);
+    storyEl.style.display = 'none';
+  } else {
+    bgBlank.style.display = 'block';
+    storyEl.style.display = 'block';
+    storyEl.textContent = 'An introduction for this stop will be added here.';
   }
 
+  const slot = era.slot || { left:38, top:30, width:24 };
   if(artwork){
-    appleLayer.onload = ()=>{ placeAppleLayer(era.slot); };
+    appleLayer.onload = ()=>{ placeAppleLayer(slot); };
     appleLayer.src = artwork;
     appleLayer.style.display = 'block';
     resizeHandle.style.display = 'block';
     dragHint.style.display = 'block';
-    placeAppleLayer(era.slot);
+    placeAppleLayer(slot);
   }
 }
 
