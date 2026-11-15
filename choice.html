@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple No.129 — Choose</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#1b1210; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;background:#ffffff;}
+  body{
+    font-family:'Pathway Extreme',sans-serif;color:var(--ink);
+    min-height:100vh;display:flex;flex-direction:column;
+  }
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    padding:28px 7vw 0;
+  }
+  .back{
+    color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;opacity:0.8;
+  }
+  .back:hover{opacity:1;}
+  .brandmark{font-family:'Notable',sans-serif;font-size:18px;letter-spacing:0.02em;opacity:0.85;}
+
+  .center{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:20px 7vw 60px;text-align:center;
+  }
+  .kicker{font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:#b23a3a;}
+  h1{font-family:'Notable',sans-serif;font-weight:400;font-size:clamp(28px,4vw,44px);margin:10px 0 44px;}
+
+  .cards{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;max-width:820px;}
+  .card{
+    width:300px;border:1.5px solid rgba(0,0,0,0.12);border-radius:20px;
+    padding:30px 26px 28px;cursor:pointer;background:#fff;
+    transition:transform .15s ease, box-shadow .15s ease;
+    text-decoration:none;color:var(--ink);
+  }
+  .card:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,0.1);}
+  .card-icon{font-size:40px;margin-bottom:14px;}
+  .card h2{font-family:'Notable',sans-serif;font-weight:400;font-size:22px;margin:0 0 10px;}
+  .card p{font-size:13.5px;line-height:1.5;opacity:0.65;margin:0;}
+  .card .go{
+    margin-top:18px;font-weight:800;font-size:12px;text-transform:uppercase;
+    letter-spacing:0.06em;color:#b23a3a;
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="index.html">&larr; BACK</a>
+    <div class="brandmark">APPLE NO.129</div>
+  </div>
+
+  <div class="center">
+    <span class="kicker">Step 1</span>
+    <h1>How do you want to shape it?</h1>
+    <div class="cards">
+      <a class="card" href="builder.html">
+        <div class="card-icon">&#x1F34E;</div>
+        <h2>Model it in 3D</h2>
+        <p>Stretch, rotate and colour a real apple mesh with your mouse. Precise, sculptural.</p>
+        <div class="go">Start modelling &rarr;</div>
+      </a>
+      <a class="card" href="draw.html">
+        <div class="card-icon">&#9998;&#65039;</div>
+        <h2>Draw it by hand</h2>
+        <p>No template, no rules — just a blank canvas and a brush. Whatever comes out, comes out.</p>
+        <div class="go">Start drawing &rarr;</div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

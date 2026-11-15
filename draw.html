@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple No.129 — Draw</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#1b1210; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#ffffff;}
+  body{font-family:'Pathway Extreme',sans-serif;color:var(--ink);}
+
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    padding:22px 5vw 0;
+  }
+  .back{color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;opacity:0.8;}
+  .back:hover{opacity:1;}
+  .brandmark{font-family:'Notable',sans-serif;font-size:18px;letter-spacing:0.02em;opacity:0.85;}
+  .kicker{text-align:center;font-weight:800;font-size:clamp(14px,1.8vw,20px);text-transform:uppercase;letter-spacing:0.03em;opacity:0.85;margin-top:4px;}
+  .hint{text-align:center;font-size:clamp(11px,1.2vw,14px);opacity:0.55;margin-top:4px;}
+
+  .layout{
+    display:flex;align-items:flex-start;justify-content:center;gap:36px;
+    padding:18px 4vw 10px;flex-wrap:wrap;
+  }
+
+  .canvas-wrap{
+    position:relative;border:1.5px solid rgba(0,0,0,0.12);border-radius:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    touch-action:none; overflow:hidden;
+  }
+  #drawCanvas{display:block;cursor:crosshair;background:#fff;}
+
+  .tools{
+    display:flex;flex-direction:column;gap:22px;width:168px;padding-top:6px;
+  }
+  .tool-group{display:flex;flex-direction:column;gap:8px;}
+  .tool-label{font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;opacity:0.6;}
+  .brush-row{display:flex;gap:8px;}
+  .tbtn{
+    font-family:'Pathway Extreme',sans-serif;font-weight:700;font-size:12.5px;
+    color:var(--ink);background:rgba(0,0,0,0.035);
+    border:1.5px solid rgba(0,0,0,0.15);border-radius:10px;
+    padding:9px 6px;cursor:pointer;text-align:center;flex:1;
+  }
+  .tbtn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .mode-row{display:flex;gap:8px;}
+
+  .colorpicker{display:flex;align-items:center;gap:14px;}
+  .wheelWrap{position:relative;width:128px;height:128px;}
+  #wheelCanvas{border-radius:50%;box-shadow:0 6px 18px rgba(0,0,0,0.18);display:block;}
+  .wheelMarker{
+    position:absolute;width:14px;height:14px;border-radius:50%;
+    border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,0.45), 0 2px 5px rgba(0,0,0,0.3);
+    transform:translate(-50%,-50%);pointer-events:none;
+  }
+  .valBar{width:14px;height:112px;border-radius:999px;position:relative;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);cursor:pointer;}
+  .valKnob{position:absolute;left:50%;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--ink);transform:translate(-50%,-50%);box-shadow:0 2px 5px rgba(0,0,0,0.3);}
+
+  .swatch-current{width:30px;height:30px;border-radius:50%;border:2px solid rgba(0,0,0,0.2);}
+
+  .clear-link{
+    font-weight:700;font-size:12px;color:#b23a3a;background:none;border:none;cursor:pointer;text-align:left;padding:0;
+  }
+
+  .bottom{display:flex;justify-content:center;padding:4px 0 24px;}
+  .nextBtn{
+    font-family:'Notable',sans-serif;font-weight:400;font-size:15px;color:#fff;
+    background:linear-gradient(135deg,#c75a56 0%, #e8a6a0 55%, #f0c2b8 100%);
+    border:none;border-radius:999px;padding:0.55em 1.4em 0.65em;cursor:pointer;
+    box-shadow:0 8px 18px rgba(60,10,10,0.25), inset 0 2px 4px rgba(255,255,255,0.35);
+    display:inline-flex;align-items:center;justify-content:center;line-height:1;
+  }
+
+  #debugErr{
+    position:fixed;top:120px;left:5vw;right:5vw;z-index:50;font:11px monospace;color:#b00020;
+    background:rgba(255,255,255,0.95);border:1px solid #b00020;border-radius:8px;padding:8px;
+    display:none;white-space:pre-wrap;max-height:30vh;overflow:auto;
+  }
+</style>
+</head>
+<body>
+<div id="debugErr"></div>
+
+<div class="topbar">
+  <a class="back" href="choice.html">&larr; BACK</a>
+  <div class="brandmark">APPLE NO.129</div>
+</div>
+<div class="kicker">Draw your apple</div>
+<div class="hint">No template. No rules. Draw whatever an apple looks like to you.</div>
+
+<div class="layout">
+  <div class="tools">
+    <div class="tool-group">
+      <div class="tool-label">Tool</div>
+      <div class="mode-row">
+        <button class="tbtn active" id="modeBrush">Brush</button>
+        <button class="tbtn" id="modeFill">Bucket</button>
+      </div>
+    </div>
+    <div class="tool-group">
+      <div class="tool-label">Brush size</div>
+      <div class="brush-row">
+        <button class="tbtn active" id="sizeS">S</button>
+        <button class="tbtn" id="sizeM">M</button>
+        <button class="tbtn" id="sizeL">L</button>
+      </div>
+    </div>
+    <div class="tool-group">
+      <div class="tool-label">Colour</div>
+      <div class="colorpicker">
+        <div class="wheelWrap">
+          <canvas id="wheelCanvas" width="128" height="128"></canvas>
+          <div class="wheelMarker" id="wheelMarker"></div>
+        </div>
+        <div class="valBar" id="valBar"><div class="valKnob" id="valKnob"></div></div>
+      </div>
+      <div class="swatch-current" id="swatchCurrent" style="margin-top:10px;"></div>
+    </div>
+    <div class="tool-group">
+      <div class="tool-label">Or upload</div>
+      <button class="tbtn" id="uploadBtn" style="width:100%;">Upload a photo</button>
+      <input type="file" id="uploadInput" accept="image/*" style="display:none;">
+    </div>
+    <button class="clear-link" id="clearBtn">Clear canvas</button>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="drawCanvas" width="420" height="470"></canvas>
+  </div>
+</div>
+
+<div class="bottom">
+  <button class="nextBtn" id="nextBtn">NEXT STEP &rarr;</button>
+</div>
+
+<script>
+function showErr(msg){
+  const el = document.getElementById('debugErr');
+  el.style.display = 'block';
+  el.textContent += msg + '\n';
+}
+window.addEventListener('error', e=> showErr('Error: ' + e.message));
+
+/* ---------- drawing canvas ---------- */
+const canvas = document.getElementById('drawCanvas');
+const ctx = canvas.getContext('2d', { willReadFrequently:true });
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.lineCap = 'round';
+ctx.lineJoin = 'round';
+
+let mode = 'brush'; // 'brush' | 'fill'
+let brushSize = 4;
+let drawing = false;
+let lastX = 0, lastY = 0;
+
+function canvasPoint(e){
+  const r = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / r.width;
+  const scaleY = canvas.height / r.height;
+  return { x: (e.clientX - r.left) * scaleX, y: (e.clientY - r.top) * scaleY };
+}
+
+function currentColor(){
+  return document.getElementById('swatchCurrent').dataset.hex || '#c8102e';
+}
+
+canvas.addEventListener('pointerdown', e=>{
+  const p = canvasPoint(e);
+  if(mode === 'fill'){
+    floodFill(Math.round(p.x), Math.round(p.y), currentColor());
+    return;
+  }
+  drawing = true;
+  lastX = p.x; lastY = p.y;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, brushSize/2, 0, Math.PI*2);
+  ctx.fillStyle = currentColor();
+  ctx.fill();
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e=>{
+  if(!drawing || mode !== 'brush') return;
+  const p = canvasPoint(e);
+  ctx.strokeStyle = currentColor();
+  ctx.lineWidth = brushSize;
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  lastX = p.x; lastY = p.y;
+});
+canvas.addEventListener('pointerup', ()=> drawing = false);
+canvas.addEventListener('pointercancel', ()=> drawing = false);
+
+/* ---------- flood fill (bucket) ---------- */
+function hexToRgb(hex){
+  const v = parseInt(hex.slice(1), 16);
+  return [(v>>16)&255, (v>>8)&255, v&255, 255];
+}
+function floodFill(startX, startY, hex){
+  try{
+    if(startX < 0 || startY < 0 || startX >= canvas.width || startY >= canvas.height) return;
+    const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const data = img.data;
+    const w = canvas.width, h = canvas.height;
+    const target = ((startY*w)+startX)*4;
+    const targetColor = [data[target], data[target+1], data[target+2], data[target+3]];
+    const fillColor = hexToRgb(hex);
+    if(targetColor[0]===fillColor[0] && targetColor[1]===fillColor[1] && targetColor[2]===fillColor[2]) return;
+
+    const tolerance = 40;
+    function matches(i){
+      return Math.abs(data[i]-targetColor[0]) <= tolerance &&
+             Math.abs(data[i+1]-targetColor[1]) <= tolerance &&
+             Math.abs(data[i+2]-targetColor[2]) <= tolerance;
+    }
+    const stack = [[startX,startY]];
+    const visited = new Uint8Array(w*h);
+    while(stack.length){
+      const [x,y] = stack.pop();
+      if(x<0||y<0||x>=w||y>=h) continue;
+      const idx = y*w+x;
+      if(visited[idx]) continue;
+      const i = idx*4;
+      if(!matches(i)) continue;
+      visited[idx] = 1;
+      data[i]=fillColor[0]; data[i+1]=fillColor[1]; data[i+2]=fillColor[2]; data[i+3]=255;
+      stack.push([x+1,y],[x-1,y],[x,y+1],[x,y-1]);
+    }
+    ctx.putImageData(img,0,0);
+  }catch(err){
+    showErr('floodFill failed: ' + err.message);
+  }
+}
+
+/* ---------- tool buttons ---------- */
+document.getElementById('modeBrush').addEventListener('click', e=>{
+  mode='brush';
+  document.querySelectorAll('#modeBrush,#modeFill').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+});
+document.getElementById('modeFill').addEventListener('click', e=>{
+  mode='fill';
+  document.querySelectorAll('#modeBrush,#modeFill').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+});
+document.getElementById('sizeS').addEventListener('click', e=>{
+  brushSize=4; document.querySelectorAll('#sizeS,#sizeM,#sizeL').forEach(b=>b.classList.remove('active')); e.target.classList.add('active');
+});
+document.getElementById('sizeM').addEventListener('click', e=>{
+  brushSize=10; document.querySelectorAll('#sizeS,#sizeM,#sizeL').forEach(b=>b.classList.remove('active')); e.target.classList.add('active');
+});
+document.getElementById('sizeL').addEventListener('click', e=>{
+  brushSize=20; document.querySelectorAll('#sizeS,#sizeM,#sizeL').forEach(b=>b.classList.remove('active')); e.target.classList.add('active');
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+});
+
+/* ---------- upload a photo of a drawing, cut out its background ---------- */
+document.getElementById('uploadBtn').addEventListener('click', ()=>{
+  document.getElementById('uploadInput').click();
+});
+document.getElementById('uploadInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const off = document.createElement('canvas');
+        off.width = canvas.width; off.height = canvas.height;
+        const octx = off.getContext('2d', { willReadFrequently:true });
+        octx.fillStyle = '#ffffff';
+        octx.fillRect(0,0,off.width,off.height);
+
+        // fit the uploaded photo inside the canvas, preserving its aspect ratio
+        const scale = Math.min(off.width/img.width, off.height/img.height);
+        const w = img.width*scale, h = img.height*scale;
+        const x = (off.width-w)/2, y = (off.height-h)/2;
+        octx.drawImage(img, x, y, w, h);
+
+        // sample the four corners as the background colour (handles off-white
+        // paper and uneven lighting better than assuming pure white), then
+        // key anything close to it back to white so the final export step
+        // (which keys white to transparent) removes it cleanly.
+        const imgData = octx.getImageData(0,0,off.width,off.height);
+        const d = imgData.data;
+        const W = off.width, H = off.height;
+        const corners = [[2,2],[W-3,2],[2,H-3],[W-3,H-3]];
+        let br=0,bg=0,bb=0;
+        corners.forEach(([cx,cy])=>{
+          const i = (cy*W+cx)*4;
+          br+=d[i]; bg+=d[i+1]; bb+=d[i+2];
+        });
+        br/=4; bg/=4; bb/=4;
+
+        const threshold = 30;
+        for(let i=0;i<d.length;i+=4){
+          const dist = Math.sqrt((d[i]-br)**2 + (d[i+1]-bg)**2 + (d[i+2]-bb)**2);
+          if(dist < threshold){
+            d[i]=255; d[i+1]=255; d[i+2]=255;
+          }
+        }
+        octx.putImageData(imgData,0,0);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(off, 0, 0);
+      }catch(err){
+        showErr('upload processing failed: ' + err.message);
+      }
+    };
+    img.onerror = ()=> showErr('could not read the uploaded image');
+    img.src = ev.target.result;
+  };
+  reader.onerror = ()=> showErr('could not read the file');
+  reader.readAsDataURL(file);
+  e.target.value = '';
+});
+
+/* ---------- Procreate-style HSV colour wheel (same as builder.html) ---------- */
+function hsvToRgb(h,s,v){
+  const c = v*s;
+  const x = c*(1-Math.abs((h/60)%2-1));
+  const m = v-c;
+  let r,g,b;
+  if(h<60){[r,g,b]=[c,x,0];}
+  else if(h<120){[r,g,b]=[x,c,0];}
+  else if(h<180){[r,g,b]=[0,c,x];}
+  else if(h<240){[r,g,b]=[0,x,c];}
+  else if(h<300){[r,g,b]=[x,0,c];}
+  else {[r,g,b]=[c,0,x];}
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+function rgbToHex(r,g,b){ return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+function hexToHsv(hex){
+  const r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  let h=0;
+  if(d!==0){
+    if(max===r) h=60*(((g-b)/d)%6);
+    else if(max===g) h=60*((b-r)/d+2);
+    else h=60*((r-g)/d+4);
+  }
+  if(h<0) h+=360;
+  const s = max===0 ? 0 : d/max;
+  return { h, s, v:max };
+}
+
+const wheelCanvas = document.getElementById('wheelCanvas');
+const wheelCtx = wheelCanvas.getContext('2d');
+const wheelMarker = document.getElementById('wheelMarker');
+const valBar = document.getElementById('valBar');
+const valKnob = document.getElementById('valKnob');
+const WHEEL_SIZE = wheelCanvas.width;
+const WHEEL_R = WHEEL_SIZE/2;
+const swatchEl = document.getElementById('swatchCurrent');
+
+const colorState = hexToHsv('#c8102e');
+
+function drawWheel(){
+  const img = wheelCtx.createImageData(WHEEL_SIZE, WHEEL_SIZE);
+  for(let y=0;y<WHEEL_SIZE;y++){
+    for(let x=0;x<WHEEL_SIZE;x++){
+      const dx = x-WHEEL_R, dy = y-WHEEL_R;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      const idx = (y*WHEEL_SIZE+x)*4;
+      if(dist<=WHEEL_R){
+        let angle = Math.atan2(dy,dx)*180/Math.PI;
+        if(angle<0) angle+=360;
+        const sat = Math.min(1, dist/WHEEL_R);
+        const [r,g,b] = hsvToRgb(angle, sat, colorState.v);
+        img.data[idx]=r; img.data[idx+1]=g; img.data[idx+2]=b; img.data[idx+3]=255;
+      } else {
+        img.data[idx+3]=0;
+      }
+    }
+  }
+  wheelCtx.putImageData(img,0,0);
+}
+function drawValBar(){
+  const [r,g,b] = hsvToRgb(colorState.h, colorState.s, 1);
+  valBar.style.background = `linear-gradient(to top, #000, rgb(${r},${g},${b}))`;
+}
+function positionWheelMarker(){
+  const dist = colorState.s*WHEEL_R;
+  const rad = colorState.h*Math.PI/180;
+  wheelMarker.style.left = (WHEEL_R + Math.cos(rad)*dist)+'px';
+  wheelMarker.style.top = (WHEEL_R + Math.sin(rad)*dist)+'px';
+}
+function positionValKnob(){
+  const h = valBar.clientHeight || 112;
+  valKnob.style.top = ((1-colorState.v)*h)+'px';
+}
+function applyColor(){
+  const [r,g,b] = hsvToRgb(colorState.h, colorState.s, colorState.v);
+  const hex = rgbToHex(r,g,b);
+  swatchEl.style.background = hex;
+  swatchEl.dataset.hex = hex;
+}
+
+function wheelPointFromEvent(e){
+  const rect = wheelCanvas.getBoundingClientRect();
+  const x = e.clientX-rect.left-WHEEL_R;
+  const y = e.clientY-rect.top-WHEEL_R;
+  let dist = Math.sqrt(x*x+y*y);
+  dist = Math.min(dist, WHEEL_R);
+  let angle = Math.atan2(y,x)*180/Math.PI;
+  if(angle<0) angle+=360;
+  colorState.h = angle;
+  colorState.s = dist/WHEEL_R;
+}
+let draggingWheel=false, draggingVal=false;
+wheelCanvas.addEventListener('pointerdown', e=>{ draggingWheel=true; wheelCanvas.setPointerCapture(e.pointerId); wheelPointFromEvent(e); positionWheelMarker(); drawValBar(); applyColor(); });
+wheelCanvas.addEventListener('pointermove', e=>{ if(!draggingWheel) return; wheelPointFromEvent(e); positionWheelMarker(); drawValBar(); applyColor(); });
+wheelCanvas.addEventListener('pointerup', ()=>draggingWheel=false);
+wheelCanvas.addEventListener('pointercancel', ()=>draggingWheel=false);
+
+function valFromEvent(e){
+  const rect = valBar.getBoundingClientRect();
+  let t = 1 - (e.clientY-rect.top)/rect.height;
+  t = Math.max(0, Math.min(1, t));
+  colorState.v = t;
+}
+valBar.addEventListener('pointerdown', e=>{ draggingVal=true; valBar.setPointerCapture(e.pointerId); valFromEvent(e); positionValKnob(); drawWheel(); applyColor(); });
+valBar.addEventListener('pointermove', e=>{ if(!draggingVal) return; valFromEvent(e); positionValKnob(); drawWheel(); applyColor(); });
+valBar.addEventListener('pointerup', ()=>draggingVal=false);
+valBar.addEventListener('pointercancel', ()=>draggingVal=false);
+
+drawWheel();
+drawValBar();
+positionWheelMarker();
+positionValKnob();
+applyColor();
+
+/* ---------- next step: key out white background, save, move on ---------- */
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  try{
+    const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const d = img.data;
+    for(let i=0;i<d.length;i+=4){
+      const minc = Math.min(d[i],d[i+1],d[i+2]);
+      const dist = 255 - minc;
+      const alpha = Math.max(0, Math.min(255, (dist-6)*6));
+      d[i+3] = alpha;
+    }
+    const out = document.createElement('canvas');
+    out.width = canvas.width; out.height = canvas.height;
+    out.getContext('2d').putImageData(img,0,0);
+    const dataUrl = out.toDataURL('image/png');
+    localStorage.setItem('apple129_artwork', dataUrl);
+  }catch(err){
+    showErr('save failed: ' + err.message);
+  }
+  window.location.href = 'journey.html';
+});
+</script>
+</body>
+</html>

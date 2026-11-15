@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple No.129 — Journey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#1b1210; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;background:#ffffff;}
+  body{font-family:'Pathway Extreme',sans-serif;color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
+
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;padding:22px 5vw 0;}
+  .back{color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;opacity:0.8;}
+  .back:hover{opacity:1;}
+  .brandmark{font-family:'Notable',sans-serif;font-size:18px;letter-spacing:0.02em;opacity:0.85;}
+  .kicker{text-align:center;font-weight:800;font-size:clamp(14px,1.8vw,20px);text-transform:uppercase;letter-spacing:0.03em;opacity:0.85;margin-top:4px;}
+
+  .stage{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:14px 4vw 8px;gap:14px;
+  }
+  .era-head{text-align:center;}
+  .era-year{font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#b23a3a;}
+  .era-title{font-family:'Notable',sans-serif;font-weight:400;font-size:clamp(20px,3vw,30px);margin:4px 0 0;}
+
+  .viewer{
+    position:relative;width:min(640px,88vw);
+    border-radius:14px;overflow:hidden;box-shadow:0 14px 34px rgba(0,0,0,0.12);
+    background:#f3ece7;
+    aspect-ratio:4/3;
+  }
+  .bg-painting{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .bg-cert{
+    position:absolute;inset:0;background:#fff;border:3px solid #c8102e;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;
+  }
+  .bg-cert .stamp{font-family:'Notable',sans-serif;font-size:13px;letter-spacing:0.06em;color:#c8102e;border:2px solid #c8102e;border-radius:6px;padding:4px 10px;}
+  .bg-cert .spec{font-family:'Pathway Extreme',sans-serif;font-weight:700;font-size:12px;text-align:center;opacity:0.7;}
+
+  .apple-layer{
+    position:absolute;cursor:grab;touch-action:none;user-select:none;-webkit-user-drag:none;
+    filter:drop-shadow(0 10px 14px rgba(0,0,0,0.45)) drop-shadow(0 2px 5px rgba(0,0,0,0.35));
+    display:none;
+  }
+  .apple-layer.grabbing{cursor:grabbing;}
+  .resize-handle{
+    position:absolute;width:16px;height:16px;border-radius:50%;
+    background:#fff;border:2.5px solid #c8102e;cursor:nwse-resize;touch-action:none;
+    display:none;box-shadow:0 2px 5px rgba(0,0,0,0.3);
+  }
+
+  .placeholder{text-align:center;padding:30px;color:#9a8c84;font-size:13px;line-height:1.6;position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .placeholder b{display:block;font-size:15px;color:#6b5b52;margin-bottom:8px;}
+
+  .story{max-width:560px;font-size:13.5px;line-height:1.6;text-align:center;opacity:0.8;min-height:60px;}
+  .drag-hint{font-size:11px;opacity:0.45;margin-top:-6px;}
+
+  .timeline-wrap{padding:6px 6vw 36px;}
+  .timeline{position:relative;height:56px;}
+  .track{position:absolute;top:28px;left:0;right:0;height:3px;background:rgba(0,0,0,0.12);border-radius:2px;}
+  .trackFill{position:absolute;top:28px;left:0;height:3px;background:#c8102e;border-radius:2px;transition:width .25s ease;}
+  .tick{position:absolute;top:21px;width:17px;height:17px;border-radius:50%;background:#fff;border:2.5px solid rgba(0,0,0,0.25);transform:translateX(-50%);cursor:pointer;transition:border-color .2s, background .2s, transform .2s;}
+  .tick.active{background:#c8102e;border-color:#c8102e;transform:translateX(-50%) scale(1.25);}
+  .tick-label{position:absolute;top:44px;transform:translateX(-50%);font-size:9.5px;font-weight:700;text-align:center;white-space:nowrap;opacity:0.55;}
+  .tick-label.active{opacity:1;color:#c8102e;}
+</style>
+</head>
+<body>
+<div id="debugErr" style="position:fixed;top:60px;left:5vw;right:5vw;z-index:50;font:11px monospace;color:#b00020;background:rgba(255,255,255,0.95);border:1px solid #b00020;border-radius:8px;padding:8px;display:none;white-space:pre-wrap;max-height:30vh;overflow:auto;"></div>
+
+<div class="topbar">
+  <a class="back" href="choice.html">&larr; BACK</a>
+  <div class="brandmark">APPLE NO.129</div>
+</div>
+<div class="kicker">Your apple's journey</div>
+
+<div class="stage">
+  <div class="era-head">
+    <div class="era-year" id="eraYear">YEAR</div>
+    <h1 class="era-title" id="eraTitle">Title</h1>
+  </div>
+
+  <div class="viewer" id="viewer">
+    <img class="bg-painting" id="bgPainting" style="display:none;">
+    <div class="bg-cert" id="bgCert" style="display:none;">
+      <div class="stamp">NO.129</div>
+      <div class="spec">68&ndash;71mm &middot; 140&ndash;155g &middot; Extra / I / II</div>
+    </div>
+    <img class="apple-layer" id="appleLayer" draggable="false">
+    <div class="resize-handle" id="resizeHandle"></div>
+    <div class="placeholder" id="placeholder" style="display:none;"><b>Coming soon</b>The painting for this stop isn&rsquo;t in yet &mdash; the story above is real, the picture is on its way.</div>
+  </div>
+
+  <div class="story" id="eraStory">Story text.</div>
+  <div class="drag-hint" id="dragHint">Drag your apple to move it &middot; drag the dot to resize</div>
+</div>
+
+<div class="timeline-wrap">
+  <div class="timeline" id="timeline">
+    <div class="track"></div>
+    <div class="trackFill" id="trackFill"></div>
+  </div>
+</div>
+
+<script>
+function showErr(msg){
+  const el = document.getElementById('debugErr');
+  el.style.display = 'block';
+  el.textContent += msg + '\n';
+}
+window.addEventListener('error', e=> showErr('Error: ' + e.message));
+
+const ERAS = [
+  { id:'eden', year:'Myth', title:'The Garden of Eden',
+    story:"Genesis never actually says the forbidden fruit was an apple — the Hebrew text just says “fruit.” The apple we picture came centuries later, from a Latin pun (malum meant both “apple” and “evil”) and from painters who fixed the image in the Western imagination. The “original” apple only exists because someone, long ago, decided to imagine it that way.",
+    ready:false },
+  { id:'paris', year:'Greek myth', title:'The Judgment of Paris',
+    story:"Eris, goddess of discord, threw a golden apple inscribed “to the fairest” among three goddesses, starting the rivalry that led to the Trojan War. It was never a real apple — it was a prize, a symbol, a trigger for conflict.",
+    ready:false },
+  { id:'durer', year:'1507', title:"Dürer's Adam and Eve",
+    story:"Dürer's life-sized panel paintings gave the forbidden fruit its most famous face: round, smooth, faintly golden-red. This single image did more than any sermon to fix “what the apple looked like” in Western art.",
+    ready:false },
+  { id:'newton', year:'1666 / 1726', title:"Newton's Apple",
+    story:"Newton told people late in his life that watching an apple fall from a tree helped him think about gravity. The earliest written account, from 1726, says nothing about it hitting his head — that detail was invented more than a century later.",
+    ready:false },
+  { id:'cezanne', year:'c.1890s', title:"Cézanne's Apples",
+    story:"Cézanne painted apples obsessively for decades, deliberately refusing to make them look smooth or perfectly round. His loose, colour-built fruit argued — a century before any supermarket standard — against the idea that an apple should be judged by how closed and uniform its shape is.",
+    ready:true, bg:'assets/cezanne.jpg', slot:{ left:58, top:46, width:14 } },
+  { id:'bigapple', year:'1920s–today', title:'The Big Apple',
+    story:"New York's nickname has nothing to do with real apples. It began as 1920s horse-racing slang, was picked up by jazz musicians in the 1930s, and became official tourism branding in the 1970s. By the 20th century, “apple” had become a word you could borrow — a symbol untethered from the fruit itself.",
+    ready:false },
+  { id:'today', year:'Today', title:'Count-128',
+    story:"Today's apple has no painter, no myth, no story — only a specification. Extra Class, Class I, Class II: a 20kg box of 128 apples, each between 68 and 71mm. This is the only apple most of us will ever actually touch.",
+    ready:true, cert:true, slot:{ left:50, top:35, width:26 } }
+];
+
+let artwork = null;
+try{ artwork = localStorage.getItem('apple129_artwork'); }catch(e){}
+
+let current = 0;
+const viewer = document.getElementById('viewer');
+const timeline = document.getElementById('timeline');
+const trackFill = document.getElementById('trackFill');
+const bgPainting = document.getElementById('bgPainting');
+const bgCert = document.getElementById('bgCert');
+const appleLayer = document.getElementById('appleLayer');
+const resizeHandle = document.getElementById('resizeHandle');
+const placeholder = document.getElementById('placeholder');
+const dragHint = document.getElementById('dragHint');
+
+function buildTicks(){
+  ERAS.forEach((era, i)=>{
+    const pct = (i/(ERAS.length-1))*100;
+    const tick = document.createElement('div');
+    tick.className = 'tick';
+    tick.style.left = pct+'%';
+    tick.dataset.index = i;
+    tick.addEventListener('click', ()=> goTo(i));
+    timeline.appendChild(tick);
+
+    const label = document.createElement('div');
+    label.className = 'tick-label';
+    label.style.left = pct+'%';
+    label.textContent = era.year;
+    label.dataset.index = i;
+    timeline.appendChild(label);
+  });
+}
+buildTicks();
+
+function placeAppleLayer(slot){
+  // slot values are percentages of the viewer box; width is % of viewer width,
+  // height is derived from the image's own aspect ratio once it loads.
+  appleLayer.style.left = slot.left + '%';
+  appleLayer.style.top = slot.top + '%';
+  appleLayer.style.width = slot.width + '%';
+  appleLayer.style.height = 'auto';
+  positionResizeHandle();
+}
+
+function positionResizeHandle(){
+  const r = appleLayer.getBoundingClientRect();
+  const vr = viewer.getBoundingClientRect();
+  resizeHandle.style.left = (r.right - vr.left - 8) + 'px';
+  resizeHandle.style.top = (r.bottom - vr.top - 8) + 'px';
+}
+
+function renderEra(i){
+  const era = ERAS[i];
+  document.getElementById('eraYear').textContent = era.year;
+  document.getElementById('eraTitle').textContent = era.title;
+  document.getElementById('eraStory').textContent = era.story;
+
+  document.querySelectorAll('.tick').forEach(t=> t.classList.toggle('active', +t.dataset.index === i));
+  document.querySelectorAll('.tick-label').forEach(t=> t.classList.toggle('active', +t.dataset.index === i));
+  trackFill.style.width = ((i/(ERAS.length-1))*100)+'%';
+
+  bgPainting.style.display = 'none';
+  bgCert.style.display = 'none';
+  appleLayer.style.display = 'none';
+  resizeHandle.style.display = 'none';
+  placeholder.style.display = 'none';
+  dragHint.style.display = 'none';
+
+  if(!era.ready){
+    placeholder.style.display = 'flex';
+    return;
+  }
+
+  if(era.cert){
+    bgCert.style.display = 'flex';
+  } else {
+    bgPainting.src = era.bg;
+    bgPainting.style.display = 'block';
+    bgPainting.onerror = ()=> showErr('could not load image: ' + era.bg);
+  }
+
+  if(artwork){
+    appleLayer.onload = ()=>{ placeAppleLayer(era.slot); };
+    appleLayer.src = artwork;
+    appleLayer.style.display = 'block';
+    resizeHandle.style.display = 'block';
+    dragHint.style.display = 'block';
+    placeAppleLayer(era.slot);
+  }
+}
+
+function goTo(i){
+  current = Math.max(0, Math.min(ERAS.length-1, i));
+  renderEra(current);
+}
+
+/* ---------- timeline scrubbing ---------- */
+let scrubbing = false;
+function posToIndex(clientX){
+  const r = timeline.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+  return Math.round(pct * (ERAS.length-1));
+}
+timeline.addEventListener('pointerdown', e=>{
+  scrubbing = true;
+  timeline.setPointerCapture(e.pointerId);
+  goTo(posToIndex(e.clientX));
+});
+timeline.addEventListener('pointermove', e=>{ if(scrubbing) goTo(posToIndex(e.clientX)); });
+timeline.addEventListener('pointerup', ()=> scrubbing=false);
+timeline.addEventListener('pointercancel', ()=> scrubbing=false);
+
+/* ---------- drag the apple layer to reposition ---------- */
+let dragState = null;
+appleLayer.addEventListener('pointerdown', e=>{
+  e.stopPropagation();
+  const vr = viewer.getBoundingClientRect();
+  dragState = {
+    startX: e.clientX, startY: e.clientY,
+    origLeftPct: parseFloat(appleLayer.style.left),
+    origTopPct: parseFloat(appleLayer.style.top),
+    vrW: vr.width, vrH: vr.height
+  };
+  appleLayer.classList.add('grabbing');
+  appleLayer.setPointerCapture(e.pointerId);
+});
+appleLayer.addEventListener('pointermove', e=>{
+  if(!dragState) return;
+  const dxPct = (e.clientX - dragState.startX) / dragState.vrW * 100;
+  const dyPct = (e.clientY - dragState.startY) / dragState.vrH * 100;
+  appleLayer.style.left = (dragState.origLeftPct + dxPct) + '%';
+  appleLayer.style.top = (dragState.origTopPct + dyPct) + '%';
+  positionResizeHandle();
+});
+appleLayer.addEventListener('pointerup', ()=>{ dragState=null; appleLayer.classList.remove('grabbing'); });
+appleLayer.addEventListener('pointercancel', ()=>{ dragState=null; appleLayer.classList.remove('grabbing'); });
+
+/* ---------- drag the handle to resize ---------- */
+let resizeState = null;
+resizeHandle.addEventListener('pointerdown', e=>{
+  e.stopPropagation();
+  const vr = viewer.getBoundingClientRect();
+  resizeState = {
+    startX: e.clientX,
+    origWidthPct: parseFloat(appleLayer.style.width),
+    vrW: vr.width
+  };
+  resizeHandle.setPointerCapture(e.pointerId);
+});
+resizeHandle.addEventListener('pointermove', e=>{
+  if(!resizeState) return;
+  const dPct = (e.clientX - resizeState.startX) / resizeState.vrW * 100;
+  let w = resizeState.origWidthPct + dPct;
+  w = Math.max(4, Math.min(60, w));
+  appleLayer.style.width = w + '%';
+  positionResizeHandle();
+});
+resizeHandle.addEventListener('pointerup', ()=> resizeState=null);
+resizeHandle.addEventListener('pointercancel', ()=> resizeState=null);
+
+/* mouse wheel also resizes, for convenience on desktop */
+appleLayer.addEventListener('wheel', e=>{
+  e.preventDefault();
+  let w = parseFloat(appleLayer.style.width);
+  w *= (e.deltaY < 0 ? 1.07 : 0.93);
+  w = Math.max(4, Math.min(60, w));
+  appleLayer.style.width = w + '%';
+  positionResizeHandle();
+}, { passive:false });
+
+window.addEventListener('resize', ()=> positionResizeHandle());
+
+renderEra(current);
+</script>
+</body>
+</html>

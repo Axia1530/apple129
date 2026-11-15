@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple No.129</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<style>
+  :root{
+    --white:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#1a0505;}
+  body{
+    font-family:'Pathway Extreme',sans-serif;
+    color:var(--white);
+  }
+  #stage{
+    position:relative;
+    width:100vw;
+    height:100vh;
+    background-image:url('assets/apple-skin.webp');
+    background-size:cover;
+    background-position:center;
+    overflow:hidden;
+  }
+  #fxCanvas{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+    z-index:5;
+  }
+  #content{
+    position:relative;
+    z-index:2;
+    height:100%;
+    display:flex;
+    align-items:center;
+    padding:0 7vw;
+  }
+  .text-col{
+    display:flex;
+    flex-direction:column;
+    max-width:48%;
+    gap:0;
+  }
+  .kicker{
+    font-family:'Pathway Extreme',sans-serif;
+    font-weight:800;
+    font-size:clamp(16px, 2.5vw, 36px);
+    line-height:1.15;
+    margin:0 0 6px;
+    white-space:nowrap;
+  }
+  .title{
+    font-family:'Notable',sans-serif;
+    font-weight:400;
+    font-size:clamp(44px, 7.5vw, 96px);
+    line-height:0.98;
+    margin:0;
+    letter-spacing:0.01em;
+  }
+  .body-copy{
+    font-family:'Pathway Extreme',sans-serif;
+    font-weight:700;
+    font-size:clamp(13px, 1.65vw, 24px);
+    line-height:1.4;
+    margin:18px 0 0;
+    max-width:46ch;
+  }
+  .cta-wrap{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex:1;
+    height:100%;
+  }
+  .cta{
+    position:relative;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'Notable',sans-serif;
+    font-weight:400;
+    font-size:clamp(16px, 2.5vw, 36px);
+    line-height:1;
+    color:#fff;
+    background:linear-gradient(135deg,#c75a56 0%, #e8a6a0 55%, #f0c2b8 100%);
+    border:none;
+    border-radius:999px;
+    padding:0.4em 1.3em 0.7em;
+    cursor:pointer;
+    box-shadow:0 10px 24px rgba(60,10,10,0.35), inset 0 2px 4px rgba(255,255,255,0.35);
+    white-space:nowrap;
+    letter-spacing:0.01em;
+  }
+  .cta::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:999px;
+    background:linear-gradient(180deg, rgba(255,255,255,0.35), rgba(255,255,255,0) 50%);
+    pointer-events:none;
+  }
+  .cta:active{transform:translateY(1px);}
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="fxCanvas"></canvas>
+  <div id="content">
+    <div class="text-col">
+      <p class="kicker" id="line-kicker">Not every apple makes it to the shelf.</p>
+      <h1 class="title" id="line-title1">APPLE</h1>
+      <h1 class="title" id="line-title2">NO.129</h1>
+      <p class="body-copy" id="line-body">Before an apple reaches the shop, it's measured and checked against a strict standard. Too small, too marked, too odd &mdash; and it's gone, quietly, before you ever see it.<br>Shape your own. No rules. See if it would have made the cut.</p>
+    </div>
+    <div class="cta-wrap">
+      <button class="cta" id="ctaBtn">SHAPE MY APPLE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ falling-apple physics ============ */
+const { Engine, World, Bodies, Body, Composite } = Matter;
+
+const engine = Engine.create();
+engine.gravity.y = 1.1;
+
+const canvas = document.getElementById('fxCanvas');
+const ctx = canvas.getContext('2d');
+let W, H;
+function sizeCanvas(){
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = H * devicePixelRatio;
+  canvas.style.width = W+'px';
+  canvas.style.height = H+'px';
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+sizeCanvas();
+
+/* static collision bodies: floor + walls + one per text line/button */
+let staticBodies = [];
+function rectBodyFromEl(el, padY){
+  const r = el.getBoundingClientRect();
+  padY = padY || 0;
+  const w = r.width;
+  const h = r.height + padY*2;
+  const cx = r.left + r.width/2;
+  const cy = r.top + r.height/2;
+  return Bodies.rectangle(cx, cy, w, h, { isStatic:true, friction:0.6, restitution:0.15 });
+}
+
+function buildStaticBodies(){
+  if(staticBodies.length){
+    Composite.remove(engine.world, staticBodies);
+  }
+  staticBodies = [];
+
+  const ids = ['line-kicker','line-title1','line-title2','line-body','ctaBtn'];
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) staticBodies.push(rectBodyFromEl(el, 2));
+  });
+
+  // floor
+  staticBodies.push(Bodies.rectangle(W/2, H+20, W*2, 40, {isStatic:true}));
+  // walls
+  staticBodies.push(Bodies.rectangle(-20, H/2, 40, H*2, {isStatic:true}));
+  staticBodies.push(Bodies.rectangle(W+20, H/2, 40, H*2, {isStatic:true}));
+
+  Composite.add(engine.world, staticBodies);
+}
+buildStaticBodies();
+
+/* falling apples */
+const apples = [];
+const COLORS = ['#c8102e','#e0453a','#e8c13a','#8fbf4f','#d9752c','#b23a52'];
+
+const appleIcon = new Image();
+appleIcon.src = 'assets/apple-icon.png';
+let tintedIcons = [];
+let iconReady = false;
+appleIcon.onload = () => {
+  tintedIcons = COLORS.map(color=>{
+    const c = document.createElement('canvas');
+    c.width = 128; c.height = 128;
+    const cctx = c.getContext('2d');
+    cctx.drawImage(appleIcon, 0, 0, 128, 128);
+    cctx.globalCompositeOperation = 'source-atop';
+    cctx.fillStyle = color;
+    cctx.fillRect(0,0,128,128);
+    // glossy highlight
+    const grad = cctx.createRadialGradient(50,46,2, 50,46,22);
+    grad.addColorStop(0,'rgba(255,255,255,0.85)');
+    grad.addColorStop(1,'rgba(255,255,255,0)');
+    cctx.fillStyle = grad;
+    cctx.fillRect(0,0,128,128);
+    return c;
+  });
+  iconReady = true;
+};
+
+function spawnApple(){
+  if(apples.length > 42) return;
+  const r = 12 + Math.random()*14;
+  const x = 20 + Math.random()*(W-40);
+  const body = Bodies.circle(x, -40, r, {
+    restitution: 0.35,
+    friction: 0.5,
+    frictionAir: 0.001,
+    density: 0.002
+  });
+  Body.setAngularVelocity(body, (Math.random()-0.5)*0.2);
+  Composite.add(engine.world, body);
+  apples.push({ body, r, colorIndex: Math.floor(Math.random()*COLORS.length) });
+}
+
+function drawApple(a){
+  const { x, y } = a.body.position;
+  const angle = a.body.angle;
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.rotate(angle);
+  if(iconReady){
+    const icon = tintedIcons[a.colorIndex];
+    const d = a.r*2.5;
+    ctx.drawImage(icon, -d/2, -d/2, d, d);
+  } else {
+    ctx.beginPath();
+    ctx.arc(0,0,a.r,0,Math.PI*2);
+    ctx.fillStyle = COLORS[a.colorIndex];
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+let lastSpawn = 0;
+function loop(ts){
+  if(ts - lastSpawn > 450){
+    spawnApple();
+    lastSpawn = ts;
+  }
+  Engine.update(engine, 1000/60);
+  ctx.clearRect(0,0,W,H);
+  for(let i=apples.length-1;i>=0;i--){
+    const a = apples[i];
+    if(a.body.position.y > H + 200){
+      Composite.remove(engine.world, a.body);
+      apples.splice(i,1);
+      continue;
+    }
+    drawApple(a);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(()=>{
+    sizeCanvas();
+    buildStaticBodies();
+  }, 150);
+});
+
+document.getElementById('ctaBtn').addEventListener('click', ()=>{
+  window.location.href = 'choice.html';
+});
+</script>
+</body>
+</html>
