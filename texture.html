@@ -73,6 +73,16 @@
     background:var(--ink);color:#fff;border-color:var(--ink);
   }
   .preset-col{display:flex;flex-direction:column;gap:8px;}
+  .colorpicker{display:flex;align-items:center;gap:12px;}
+  .wheelWrap{position:relative;width:116px;height:116px;}
+  #wheelCanvas{border-radius:50%;box-shadow:0 6px 18px rgba(0,0,0,0.18);display:block;}
+  .wheelMarker{
+    position:absolute;width:14px;height:14px;border-radius:50%;
+    border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,0.45), 0 2px 5px rgba(0,0,0,0.3);
+    transform:translate(-50%,-50%);pointer-events:none;
+  }
+  .valBar{width:14px;height:100px;border-radius:999px;position:relative;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);cursor:pointer;}
+  .valKnob{position:absolute;left:50%;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--ink);transform:translate(-50%,-50%);box-shadow:0 2px 5px rgba(0,0,0,0.3);}
   .clear-link{
     font-family:'Pathway Extreme',sans-serif;font-weight:700;font-size:12px;
     color:#b23a3a;background:none;border:none;cursor:pointer;
@@ -117,18 +127,41 @@
 
   <div class="panel">
     <div class="panel-group">
+      <div class="panel-label">Tool</div>
+      <div class="brush-row">
+        <button class="brush-btn active" id="toolMark">Blemish</button>
+        <button class="brush-btn" id="toolPaint">Paint</button>
+      </div>
+    </div>
+    <div class="panel-group" id="markTools">
       <div class="panel-label">Mark size</div>
       <div class="brush-row">
         <button class="brush-btn active" id="brushSmall">Spot</button>
         <button class="brush-btn" id="brushLarge">Scar</button>
       </div>
     </div>
-    <div class="panel-group">
+    <div class="panel-group" id="markPresets">
       <div class="panel-label">Skin pattern</div>
       <div class="preset-col">
         <button class="preset-btn" id="presetClean">Clean</button>
         <button class="preset-btn" id="presetFreckled">Freckled</button>
         <button class="preset-btn" id="presetScarred">Heavily marked</button>
+      </div>
+    </div>
+    <div class="panel-group" id="paintTools" style="display:none;">
+      <div class="panel-label">Brush colour</div>
+      <div class="colorpicker">
+        <div class="wheelWrap">
+          <canvas id="wheelCanvas" width="116" height="116"></canvas>
+          <div class="wheelMarker" id="wheelMarker"></div>
+        </div>
+        <div class="valBar" id="valBar"><div class="valKnob" id="valKnob"></div></div>
+      </div>
+      <div class="panel-label" style="margin-top:4px;">Brush size</div>
+      <div class="brush-row">
+        <button class="brush-btn active" id="paintSmall">S</button>
+        <button class="brush-btn" id="paintMedium">M</button>
+        <button class="brush-btn" id="paintLarge">L</button>
       </div>
     </div>
     <button class="clear-link" id="clearBtn">Clear all marks</button>
@@ -333,30 +366,52 @@ function makeBlemishTexture(){
   return new THREE.CanvasTexture(c);
 }
 
+function makePaintTexture(hex){
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(64,64,0,64,64,60);
+  grad.addColorStop(0, hex);
+  grad.addColorStop(0.82, hex);
+  grad.addColorStop(1, hex+'00');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(64,64,62,0,Math.PI*2);
+  ctx.fill();
+  return new THREE.CanvasTexture(c);
+}
+
+let toolMode = 'mark'; // 'mark' | 'paint'
 let brushSize = 0.075; // 'Spot'
+let paintBrushSize = 0.05; // 'S'
+let paintColor = '#c8102e';
 let markCount = 0;
 const decalGroup = new THREE.Group();
 scene.add(decalGroup);
 
-function stampDecal(point, normal, sizeMul){
+function stampDecal(point, normal, sizeMul, mode){
   if(!bodyMesh){ showErr('stampDecal: no body mesh yet (model still loading?)'); return; }
+  mode = mode || 'mark';
   try{
-    const s = brushSize * (sizeMul||1) * (0.8+Math.random()*0.5);
+    const baseSize = mode === 'paint' ? paintBrushSize : brushSize;
+    const s = baseSize * (sizeMul||1) * (mode === 'paint' ? 1 : (0.8+Math.random()*0.5));
     const orientHelper = new THREE.Object3D();
     orientHelper.position.copy(point);
     orientHelper.lookAt(point.clone().add(normal));
     orientHelper.rotateZ(Math.random()*Math.PI*2);
 
     const decalGeo = new DecalGeometry(bodyMesh, point, orientHelper.rotation, new THREE.Vector3(s, s, s*0.6));
-    const tex = makeBlemishTexture();
+    const tex = mode === 'paint' ? makePaintTexture(paintColor) : makeBlemishTexture();
     const mat = new THREE.MeshStandardMaterial({
       map: tex, transparent:true, depthTest:true, depthWrite:false,
       polygonOffset:true, polygonOffsetFactor:-4, roughness:0.9
     });
     const decalMesh = new THREE.Mesh(decalGeo, mat);
     decalGroup.add(decalMesh);
-    markCount++;
-    document.getElementById('markCount').textContent = markCount;
+    if(mode !== 'paint'){
+      markCount++;
+      document.getElementById('markCount').textContent = markCount;
+    }
   }catch(err){
     showErr('stampDecal failed: ' + err.message);
   }
@@ -393,16 +448,158 @@ function scatterPattern(count, sizeMul){
 }
 
 /* ---------- brush size buttons ---------- */
+function activateInRow(e){
+  e.target.parentElement.querySelectorAll('.brush-btn').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+}
 document.getElementById('brushSmall').addEventListener('click', (e)=>{
   brushSize = 0.075;
-  document.querySelectorAll('.brush-btn').forEach(b=>b.classList.remove('active'));
-  e.target.classList.add('active');
+  activateInRow(e);
 });
 document.getElementById('brushLarge').addEventListener('click', (e)=>{
   brushSize = 0.16;
-  document.querySelectorAll('.brush-btn').forEach(b=>b.classList.remove('active'));
-  e.target.classList.add('active');
+  activateInRow(e);
 });
+
+/* ---------- tool switch: blemish stamp vs paint brush ---------- */
+document.getElementById('toolMark').addEventListener('click', (e)=>{
+  toolMode = 'mark';
+  activateInRow(e);
+  document.getElementById('markTools').style.display = '';
+  document.getElementById('markPresets').style.display = '';
+  document.getElementById('paintTools').style.display = 'none';
+});
+document.getElementById('toolPaint').addEventListener('click', (e)=>{
+  toolMode = 'paint';
+  activateInRow(e);
+  document.getElementById('markTools').style.display = 'none';
+  document.getElementById('markPresets').style.display = 'none';
+  document.getElementById('paintTools').style.display = '';
+});
+
+/* ---------- paint brush size buttons ---------- */
+document.getElementById('paintSmall').addEventListener('click', (e)=>{
+  paintBrushSize = 0.05;
+  activateInRow(e);
+});
+document.getElementById('paintMedium').addEventListener('click', (e)=>{
+  paintBrushSize = 0.09;
+  activateInRow(e);
+});
+document.getElementById('paintLarge').addEventListener('click', (e)=>{
+  paintBrushSize = 0.14;
+  activateInRow(e);
+});
+
+/* ---------- Procreate-style HSV colour wheel for the paint brush ---------- */
+function hsvToRgbPaint(h,s,v){
+  const c = v*s;
+  const x = c*(1-Math.abs((h/60)%2-1));
+  const m = v-c;
+  let r,g,b;
+  if(h<60){[r,g,b]=[c,x,0];}
+  else if(h<120){[r,g,b]=[x,c,0];}
+  else if(h<180){[r,g,b]=[0,c,x];}
+  else if(h<240){[r,g,b]=[0,x,c];}
+  else if(h<300){[r,g,b]=[x,0,c];}
+  else {[r,g,b]=[c,0,x];}
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+function rgbToHexPaint(r,g,b){ return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+function hexToHsvPaint(hex){
+  const r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  let h=0;
+  if(d!==0){
+    if(max===r) h=60*(((g-b)/d)%6);
+    else if(max===g) h=60*((b-r)/d+2);
+    else h=60*((r-g)/d+4);
+  }
+  if(h<0) h+=360;
+  const s = max===0 ? 0 : d/max;
+  return { h, s, v:max };
+}
+
+const wheelCanvasPaint = document.getElementById('wheelCanvas');
+const wheelCtxPaint = wheelCanvasPaint.getContext('2d');
+const wheelMarkerPaint = document.getElementById('wheelMarker');
+const valBarPaint = document.getElementById('valBar');
+const valKnobPaint = document.getElementById('valKnob');
+const WHEEL_SIZE_P = wheelCanvasPaint.width;
+const WHEEL_R_P = WHEEL_SIZE_P/2;
+const paintColorState = hexToHsvPaint(paintColor);
+
+function drawWheelPaint(){
+  const img = wheelCtxPaint.createImageData(WHEEL_SIZE_P, WHEEL_SIZE_P);
+  for(let y=0;y<WHEEL_SIZE_P;y++){
+    for(let x=0;x<WHEEL_SIZE_P;x++){
+      const dx = x-WHEEL_R_P, dy = y-WHEEL_R_P;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      const idx = (y*WHEEL_SIZE_P+x)*4;
+      if(dist<=WHEEL_R_P){
+        let angle = Math.atan2(dy,dx)*180/Math.PI;
+        if(angle<0) angle+=360;
+        const sat = Math.min(1, dist/WHEEL_R_P);
+        const [r,g,b] = hsvToRgbPaint(angle, sat, paintColorState.v);
+        img.data[idx]=r; img.data[idx+1]=g; img.data[idx+2]=b; img.data[idx+3]=255;
+      } else {
+        img.data[idx+3]=0;
+      }
+    }
+  }
+  wheelCtxPaint.putImageData(img,0,0);
+}
+function drawValBarPaint(){
+  const [r,g,b] = hsvToRgbPaint(paintColorState.h, paintColorState.s, 1);
+  valBarPaint.style.background = `linear-gradient(to top, #000, rgb(${r},${g},${b}))`;
+}
+function positionWheelMarkerPaint(){
+  const dist = paintColorState.s*WHEEL_R_P;
+  const rad = paintColorState.h*Math.PI/180;
+  wheelMarkerPaint.style.left = (WHEEL_R_P + Math.cos(rad)*dist)+'px';
+  wheelMarkerPaint.style.top = (WHEEL_R_P + Math.sin(rad)*dist)+'px';
+}
+function positionValKnobPaint(){
+  const h = valBarPaint.clientHeight || 100;
+  valKnobPaint.style.top = ((1-paintColorState.v)*h)+'px';
+}
+function applyPaintColor(){
+  const [r,g,b] = hsvToRgbPaint(paintColorState.h, paintColorState.s, paintColorState.v);
+  paintColor = rgbToHexPaint(r,g,b);
+}
+
+function wheelPointFromEventPaint(e){
+  const rect = wheelCanvasPaint.getBoundingClientRect();
+  const x = e.clientX-rect.left-WHEEL_R_P;
+  const y = e.clientY-rect.top-WHEEL_R_P;
+  let dist = Math.sqrt(x*x+y*y);
+  dist = Math.min(dist, WHEEL_R_P);
+  let angle = Math.atan2(y,x)*180/Math.PI;
+  if(angle<0) angle+=360;
+  paintColorState.h = angle;
+  paintColorState.s = dist/WHEEL_R_P;
+}
+let draggingWheelPaint=false, draggingValPaint=false;
+wheelCanvasPaint.addEventListener('pointerdown', e=>{ e.stopPropagation(); draggingWheelPaint=true; wheelCanvasPaint.setPointerCapture(e.pointerId); wheelPointFromEventPaint(e); positionWheelMarkerPaint(); drawValBarPaint(); applyPaintColor(); });
+wheelCanvasPaint.addEventListener('pointermove', e=>{ if(!draggingWheelPaint) return; wheelPointFromEventPaint(e); positionWheelMarkerPaint(); drawValBarPaint(); applyPaintColor(); });
+wheelCanvasPaint.addEventListener('pointerup', ()=>draggingWheelPaint=false);
+wheelCanvasPaint.addEventListener('pointercancel', ()=>draggingWheelPaint=false);
+
+function valFromEventPaint(e){
+  const rect = valBarPaint.getBoundingClientRect();
+  let t = 1 - (e.clientY-rect.top)/rect.height;
+  t = Math.max(0, Math.min(1, t));
+  paintColorState.v = t;
+}
+valBarPaint.addEventListener('pointerdown', e=>{ e.stopPropagation(); draggingValPaint=true; valBarPaint.setPointerCapture(e.pointerId); valFromEventPaint(e); positionValKnobPaint(); drawWheelPaint(); applyPaintColor(); });
+valBarPaint.addEventListener('pointermove', e=>{ if(!draggingValPaint) return; valFromEventPaint(e); positionValKnobPaint(); drawWheelPaint(); applyPaintColor(); });
+valBarPaint.addEventListener('pointerup', ()=>draggingValPaint=false);
+valBarPaint.addEventListener('pointercancel', ()=>draggingValPaint=false);
+
+drawWheelPaint();
+drawValBarPaint();
+positionWheelMarkerPaint();
+positionValKnobPaint();
 
 /* ---------- presets ---------- */
 document.getElementById('presetClean').addEventListener('click', ()=>{
@@ -418,10 +615,12 @@ document.getElementById('clearBtn').addEventListener('click', ()=>{
   try{ clearDecals(); }catch(err){ showErr('clearBtn failed: '+err.message); }
 });
 
-/* ---------- click-to-stamp vs drag-to-orbit ---------- */
+/* ---------- click-to-stamp vs drag-to-orbit vs drag-to-paint ---------- */
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 let downPos = null;
+let painting = false;
+let lastPaintPoint = null;
 
 function setPointer(e){
   const r = renderer.domElement.getBoundingClientRect();
@@ -429,22 +628,62 @@ function setPointer(e){
   pointer.y = -((e.clientY - r.top)/r.height)*2 + 1;
 }
 
+function raycastBody(e){
+  setPointer(e);
+  raycaster.setFromCamera(pointer, camera);
+  return raycaster.intersectObject(bodyMesh, false);
+}
+
 renderer.domElement.addEventListener('pointerdown', (e)=>{
   downPos = { x:e.clientX, y:e.clientY };
+  if(toolMode === 'paint' && bodyMesh){
+    try{
+      const hits = raycastBody(e);
+      if(hits.length){
+        painting = true;
+        controls.enabled = false;
+        const normal = hits[0].face.normal.clone().transformDirection(bodyMesh.matrixWorld);
+        stampDecal(hits[0].point, normal, 1, 'paint');
+        lastPaintPoint = hits[0].point.clone();
+      }
+    }catch(err){
+      showErr('paint start failed: ' + err.message);
+    }
+  }
+});
+renderer.domElement.addEventListener('pointermove', (e)=>{
+  if(!painting) return;
+  try{
+    const hits = raycastBody(e);
+    if(hits.length){
+      const dist = hits[0].point.distanceTo(lastPaintPoint);
+      if(dist > paintBrushSize*0.45){
+        const normal = hits[0].face.normal.clone().transformDirection(bodyMesh.matrixWorld);
+        stampDecal(hits[0].point, normal, 1, 'paint');
+        lastPaintPoint = hits[0].point.clone();
+      }
+    }
+  }catch(err){
+    showErr('paint stroke failed: ' + err.message);
+  }
 });
 renderer.domElement.addEventListener('pointerup', (e)=>{
+  if(painting){
+    painting = false;
+    lastPaintPoint = null;
+    controls.enabled = true;
+  }
   if(!downPos) return;
   const moved = Math.hypot(e.clientX-downPos.x, e.clientY-downPos.y);
   downPos = null;
+  if(toolMode !== 'mark') return;
   if(moved > 6) return;
   if(!bodyMesh){ showErr('tap ignored: model not loaded yet'); return; }
   try{
-    setPointer(e);
-    raycaster.setFromCamera(pointer, camera);
-    const hits = raycaster.intersectObject(bodyMesh, false);
+    const hits = raycastBody(e);
     if(hits.length){
       const normal = hits[0].face.normal.clone().transformDirection(bodyMesh.matrixWorld);
-      stampDecal(hits[0].point, normal, 1);
+      stampDecal(hits[0].point, normal, 1, 'mark');
     }
   }catch(err){
     showErr('tap handler failed: ' + err.message);
@@ -491,12 +730,12 @@ document.getElementById('nextBtn').addEventListener('click', ()=>{
       }
       octx.putImageData(img,0,0);
       try{ localStorage.setItem('apple129_artwork', off.toDataURL('image/png')); }catch(e){}
-      window.location.href = 'journey.html';
+      window.location.href = 'senses.html';
     };
     snap.src = raw;
   }catch(err){
     showErr('snapshot failed: ' + err.message);
-    window.location.href = 'journey.html';
+    window.location.href = 'senses.html';
   }
 });
 

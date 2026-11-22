@@ -18,6 +18,7 @@
   .back:hover{opacity:1;}
   .brandmark{font-family:'Notable',sans-serif;font-size:18px;letter-spacing:0.02em;opacity:0.85;}
   .kicker{text-align:center;font-weight:800;font-size:clamp(14px,1.8vw,20px);text-transform:uppercase;letter-spacing:0.03em;opacity:0.85;margin-top:4px;}
+  .namebadge{text-align:center;font-size:11px;opacity:0.5;margin-top:2px;}
 
   .stage{
     flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -50,6 +51,16 @@
 
 
   .story{max-width:560px;font-size:13.5px;line-height:1.6;text-align:center;opacity:0.8;min-height:60px;}
+  .callout{max-width:560px;font-size:15px;font-weight:800;line-height:1.5;text-align:center;color:#c8102e;margin-top:-6px;}
+
+  .exportBtn{
+    font-family:'Notable',sans-serif;font-weight:400;font-size:13px;color:#fff;
+    background:linear-gradient(135deg,#c75a56 0%, #e8a6a0 55%, #f0c2b8 100%);
+    border:none;border-radius:999px;padding:0.5em 1.2em 0.6em;cursor:pointer;
+    box-shadow:0 6px 14px rgba(60,10,10,0.22), inset 0 2px 4px rgba(255,255,255,0.35);
+    display:inline-flex;align-items:center;justify-content:center;line-height:1;margin-top:2px;
+  }
+  .exportBtn:active{transform:translateY(1px);}
   .drag-hint{font-size:11px;opacity:0.45;margin-top:-6px;}
 
   .timeline-wrap{padding:6px 6vw 36px;}
@@ -66,10 +77,11 @@
 <div id="debugErr" style="position:fixed;top:60px;left:5vw;right:5vw;z-index:50;font:11px monospace;color:#b00020;background:rgba(255,255,255,0.95);border:1px solid #b00020;border-radius:8px;padding:8px;display:none;white-space:pre-wrap;max-height:30vh;overflow:auto;"></div>
 
 <div class="topbar">
-  <a class="back" href="choice.html">&larr; BACK</a>
+  <a class="back" href="naming.html">&larr; BACK</a>
   <div class="brandmark">APPLE NO.129</div>
 </div>
 <div class="kicker">Your apple's journey</div>
+<div class="namebadge" id="nameBadge"></div>
 
 <div class="stage">
   <div class="era-head">
@@ -85,7 +97,9 @@
   </div>
 
   <div class="story" id="eraStory">Story text.</div>
+  <div class="callout" id="eraCallout"></div>
   <div class="drag-hint" id="dragHint">Drag your apple to move it &middot; drag the dot to resize</div>
+  <button class="exportBtn" id="exportBtn">EXPORT POSTCARD</button>
 </div>
 
 <div class="timeline-wrap">
@@ -121,14 +135,36 @@ const ERAS = [
     ready:true, bg:'assets/cezanne.jpg', slot:{ left:58, top:46, width:14 } },
   { id:'bigapple', year:'1920s–today', title:'The Big Apple',
     story:"New York's nickname has nothing to do with real apples. It began as 1920s horse-racing slang, was picked up by jazz musicians in the 1930s, and became official tourism branding in the 1970s. By the 20th century, “apple” had become a word you could borrow — a symbol untethered from the fruit itself.",
-    ready:false },
-  { id:'today', year:'Today', title:'Count-128',
-    story:"Today's apple has no painter, no myth, no story — only a specification. Extra Class, Class I, Class II: a 20kg box of 128 apples, each between 68 and 71mm. This is the only apple most of us will ever actually touch.",
-    ready:true, slot:{ left:50, top:35, width:26 } }
+    ready:false }
 ];
+
+const CALLOUTS = {
+  eden:    (u,a)=> `If Adam and Eve had taken a bite of ${a}, would the story have gone the same way?`,
+  paris:   (u,a)=> `What if the golden apple Paris handed to Aphrodite had looked exactly like ${a}?`,
+  durer:   (u,a)=> `Dürer painted the forbidden fruit perfectly round — what if he'd painted ${a} instead?`,
+  newton:  (u,a)=> `Oh my — the apple that fell on Newton's head turns out to have looked just like ${a}.`,
+  cezanne: (u,a)=> `Cézanne spent decades painting apples that refused to be perfect. ${a} would have fit right on his table.`,
+  bigapple:(u,a)=> `If New York had borrowed its nickname from a real apple, it might as well have been ${a}.`
+};
+
+const NEWSLEADS = {
+  eden:    (u,a)=> `EXCLUSIVE — The fruit picked in the garden today has been identified as ${a}, grown by ${u}.`,
+  paris:   (u,a)=> `DISPATCH FROM MT. IDA — The golden apple at the centre of the gods' quarrel has been identified as ${a}, grown by ${u}.`,
+  durer:   (u,a)=> `STUDIO NOTES, NUREMBERG — Albrecht Dürer has just sketched ${a}, an apple grown by ${u}, as the forbidden fruit of Eden.`,
+  newton:  (u,a)=> `REPORTED TODAY — An apple grown by ${u}, named ${a}, has just fallen on Sir Isaac Newton's head.`,
+  cezanne: (u,a)=> `FROM THE ATELIER, AIX-EN-PROVENCE — Paul Cézanne has set ${a}, an apple grown by ${u}, on his still-life table.`,
+  bigapple:(u,a)=> `CITY DESK, NEW YORK — The nickname "The Big Apple" has just been pinned on ${a}, an apple grown by ${u}.`
+};
 
 let artwork = null;
 try{ artwork = localStorage.getItem('apple129_artwork'); }catch(e){}
+
+let userName = 'You', appleName = 'your apple';
+try{
+  userName = localStorage.getItem('apple129_username') || userName;
+  appleName = localStorage.getItem('apple129_applename') || appleName;
+}catch(e){}
+document.getElementById('nameBadge').textContent = `Traveling with ${userName} · Apple ${appleName}`;
 
 let current = 0;
 const viewer = document.getElementById('viewer');
@@ -194,6 +230,7 @@ function renderEra(i){
 
   const isCezanne = era.id === 'cezanne';
   const storyEl = document.getElementById('eraStory');
+  const calloutEl = document.getElementById('eraCallout');
 
   if(isCezanne){
     bgPainting.src = era.bg;
@@ -205,6 +242,9 @@ function renderEra(i){
     storyEl.style.display = 'block';
     storyEl.textContent = 'An introduction for this stop will be added here.';
   }
+
+  const calloutFn = CALLOUTS[era.id];
+  calloutEl.textContent = calloutFn ? calloutFn(userName, appleName) : '';
 
   const slot = era.slot || { left:38, top:30, width:24 };
   if(artwork){
@@ -297,6 +337,127 @@ appleLayer.addEventListener('wheel', e=>{
 }, { passive:false });
 
 window.addEventListener('resize', ()=> positionResizeHandle());
+
+/* ---------- postcard export ---------- */
+function drawCover(ctx, img, dx, dy, dw, dh){
+  const ir = img.naturalWidth / img.naturalHeight;
+  const dr = dw / dh;
+  let sx, sy, sw, sh;
+  if(ir > dr){
+    sh = img.naturalHeight; sw = sh * dr;
+    sx = (img.naturalWidth - sw) / 2; sy = 0;
+  } else {
+    sw = img.naturalWidth; sh = sw / dr;
+    sx = 0; sy = (img.naturalHeight - sh) / 2;
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight, align){
+  const words = text.split(' ');
+  let line = '', yy = y;
+  for(let n = 0; n < words.length; n++){
+    const testLine = line + words[n] + ' ';
+    if(ctx.measureText(testLine).width > maxWidth && n > 0){
+      drawLine(line, yy);
+      line = words[n] + ' ';
+      yy += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  drawLine(line, yy);
+  return yy + lineHeight;
+
+  function drawLine(ln, ly){
+    const tx = align === 'left' ? x : x + maxWidth/2;
+    ctx.textAlign = align === 'left' ? 'left' : 'center';
+    ctx.fillText(ln.trim(), tx, ly);
+  }
+}
+
+function exportPostcard(){
+  const era = ERAS[current];
+  const W = 800, IMG_H = 600, TXT_H = 640;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = IMG_H + TXT_H;
+  const ctx = canvas.getContext('2d');
+
+  /* image area */
+  if(era.id === 'cezanne' && bgPainting.complete && bgPainting.naturalWidth){
+    drawCover(ctx, bgPainting, 0, 0, W, IMG_H);
+    ctx.fillStyle = 'rgba(90,60,30,0.07)';
+    ctx.fillRect(0, 0, W, IMG_H);
+  } else {
+    ctx.fillStyle = '#f3ece7';
+    ctx.fillRect(0, 0, W, IMG_H);
+  }
+
+  if(artwork && appleLayer.complete && appleLayer.naturalWidth){
+    const slot = era.slot || { left:38, top:30, width:24 };
+    const leftPct = parseFloat(appleLayer.style.left) || slot.left;
+    const topPct = parseFloat(appleLayer.style.top) || slot.top;
+    const widthPct = parseFloat(appleLayer.style.width) || slot.width;
+    const dw = (widthPct/100) * W;
+    const dh = dw * (appleLayer.naturalHeight / appleLayer.naturalWidth);
+    const dx = (leftPct/100) * W;
+    const dy = (topPct/100) * IMG_H;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 10;
+    ctx.drawImage(appleLayer, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+  /* newspaper text block */
+  ctx.fillStyle = '#f6efe6';
+  ctx.fillRect(0, IMG_H, W, TXT_H);
+
+  ctx.strokeStyle = '#1b1210';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(56, IMG_H+34); ctx.lineTo(W-56, IMG_H+34); ctx.stroke();
+  ctx.lineWidth = 0.75;
+  ctx.beginPath(); ctx.moveTo(56, IMG_H+40); ctx.lineTo(W-56, IMG_H+40); ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#b23a3a';
+  ctx.font = 'bold 13px Georgia, "Times New Roman", serif';
+  ctx.fillText((era.year + ' — APPLE NO.129 GAZETTE').toUpperCase(), W/2, IMG_H+66);
+
+  const leadFn = NEWSLEADS[era.id];
+  const lead = leadFn ? leadFn(userName, appleName) : '';
+  ctx.fillStyle = '#1b1210';
+  ctx.font = 'bold 25px Georgia, "Times New Roman", serif';
+  let y = wrapText(ctx, lead, 56, IMG_H+112, W-112, 32, 'center');
+
+  y += 10;
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(56, y); ctx.lineTo(W-56, y); ctx.stroke();
+  y += 28;
+
+  ctx.fillStyle = '#2a2320';
+  ctx.font = '15px Georgia, "Times New Roman", serif';
+  y = wrapText(ctx, era.story, 56, y, W-112, 23, 'left');
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8a7a6f';
+  ctx.font = 'bold 11px Georgia, "Times New Roman", serif';
+  ctx.fillText(('APPLE ' + appleName + ' · GROWN BY ' + userName).toUpperCase(), W/2, IMG_H+TXT_H-24);
+
+  const link = document.createElement('a');
+  link.download = 'apple129-' + era.id + '-postcard.png';
+  link.href = canvas.toDataURL('image/png');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  try{ exportPostcard(); }catch(e){ showErr('export failed: ' + e.message); }
+});
 
 renderEra(current);
 </script>

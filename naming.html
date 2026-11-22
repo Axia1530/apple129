@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple No.129 — Name Your Apple</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#1b1210; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;background:#ffffff;}
+  body{
+    font-family:'Pathway Extreme',sans-serif;color:var(--ink);
+    min-height:100vh;display:flex;flex-direction:column;
+  }
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;padding:28px 7vw 0;}
+  .back{color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;opacity:0.8;cursor:pointer;}
+  .back:hover{opacity:1;}
+  .brandmark{font-family:'Notable',sans-serif;font-size:18px;letter-spacing:0.02em;opacity:0.85;}
+
+  .stage{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:20px 7vw 60px;gap:26px;
+  }
+  .kicker{text-align:center;font-weight:800;font-size:clamp(14px,1.8vw,20px);text-transform:uppercase;letter-spacing:0.03em;opacity:0.85;}
+  .lede{max-width:480px;text-align:center;font-size:13.5px;line-height:1.6;opacity:0.7;margin-top:-10px;}
+
+  .form{display:flex;flex-direction:column;gap:20px;width:min(380px,86vw);}
+  .field{display:flex;flex-direction:column;gap:8px;}
+  .field label{font-weight:800;font-size:11.5px;text-transform:uppercase;letter-spacing:0.06em;opacity:0.6;}
+  .field input{
+    font-family:'Pathway Extreme',sans-serif;font-size:16px;color:var(--ink);
+    border:1.5px solid rgba(0,0,0,0.18);border-radius:10px;padding:12px 14px;
+    background:rgba(0,0,0,0.02);outline:none;
+  }
+  .field input:focus{border-color:#c8102e;background:#fff;}
+
+  .startBtn{
+    font-family:'Notable',sans-serif;font-weight:400;font-size:16px;color:#fff;
+    background:linear-gradient(135deg,#c75a56 0%, #e8a6a0 55%, #f0c2b8 100%);
+    border:none;border-radius:999px;padding:0.65em 1.6em 0.75em;cursor:pointer;
+    box-shadow:0 8px 18px rgba(60,10,10,0.25), inset 0 2px 4px rgba(255,255,255,0.35);
+    display:inline-flex;align-items:center;justify-content:center;line-height:1;
+    margin-top:4px;
+  }
+  .startBtn:active{transform:translateY(1px);}
+
+  #debugErr{
+    position:fixed;top:90px;left:5vw;right:5vw;z-index:50;font:11px monospace;color:#b00020;
+    background:rgba(255,255,255,0.95);border:1px solid #b00020;border-radius:8px;padding:8px;
+    display:none;white-space:pre-wrap;max-height:30vh;overflow:auto;
+  }
+
+  .bg-apples{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  .bg-apple{
+    position:absolute;line-height:1;filter:grayscale(0.15);
+    animation-name:twinkle;animation-timing-function:ease-in-out;animation-iteration-count:infinite;
+  }
+  @keyframes twinkle{
+    0%,100%{ opacity:0; }
+    50%{ opacity:var(--peak,0.18); }
+  }
+  body > *:not(.bg-apples){ position:relative; z-index:1; }
+</style>
+</head>
+<body>
+<div class="bg-apples" id="bgApples"></div>
+<div id="debugErr"></div>
+
+<div class="topbar">
+  <a class="back" id="backLink">&larr; BACK</a>
+  <div class="brandmark">APPLE NO.129</div>
+</div>
+
+<div class="stage">
+  <div class="kicker">Before the journey begins</div>
+  <div class="lede">Give yourself and your apple a name. We'll carry them with you through every stop on the timeline ahead.</div>
+
+  <div class="form">
+    <div class="field">
+      <label for="userName">Your name</label>
+      <input type="text" id="userName" maxlength="24" placeholder="e.g. Alex" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="appleName">Name your apple</label>
+      <input type="text" id="appleName" maxlength="24" placeholder="e.g. Marigold" autocomplete="off">
+    </div>
+    <button class="startBtn" id="startBtn">BEGIN THE JOURNEY &rarr;</button>
+  </div>
+</div>
+
+<script>
+function showErr(msg){
+  const el = document.getElementById('debugErr');
+  el.style.display = 'block';
+  el.textContent += msg + '\n';
+}
+window.addEventListener('error', e=> showErr('Error: ' + e.message));
+
+/* ---------- slow twinkling background apples ---------- */
+(function(){
+  const host = document.getElementById('bgApples');
+  const COUNT = 11;
+  for(let i=0;i<COUNT;i++){
+    const span = document.createElement('span');
+    span.className = 'bg-apple';
+    span.textContent = '\u{1F34E}';
+    const size = 90 + Math.random()*170;
+    span.style.fontSize = size + 'px';
+    span.style.left = (Math.random()*90) + 'vw';
+    span.style.top = (Math.random()*90) + 'vh';
+    span.style.setProperty('--peak', (0.1 + Math.random()*0.16).toFixed(2));
+    const duration = 8 + Math.random()*10;
+    span.style.animationDuration = duration + 's';
+    span.style.animationDelay = (-Math.random()*duration) + 's';
+    host.appendChild(span);
+  }
+})();
+
+document.getElementById('backLink').addEventListener('click', ()=>{
+  if(document.referrer){ history.back(); } else { window.location.href = 'senses.html'; }
+});
+
+const userInput = document.getElementById('userName');
+const appleInput = document.getElementById('appleName');
+
+try{
+  userInput.value = localStorage.getItem('apple129_username') || '';
+  appleInput.value = localStorage.getItem('apple129_applename') || '';
+}catch(e){}
+
+function go(){
+  const name = userInput.value.trim() || 'You';
+  const apple = appleInput.value.trim() || 'your apple';
+  try{
+    localStorage.setItem('apple129_username', name);
+    localStorage.setItem('apple129_applename', apple);
+  }catch(e){ showErr('localStorage error: ' + e.message); }
+  window.location.href = 'journey.html';
+}
+
+document.getElementById('startBtn').addEventListener('click', go);
+[userInput, appleInput].forEach(inp=>{
+  inp.addEventListener('keydown', e=>{ if(e.key === 'Enter') go(); });
+});
+</script>
+</body>
+</html>
