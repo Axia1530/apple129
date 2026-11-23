@@ -13,6 +13,17 @@
   html,body{margin:0;padding:0;min-height:100%;background:#ffffff;}
   body{font-family:'Pathway Extreme',sans-serif;color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
 
+  .bg-apples{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;}
+  .bg-apple{
+    position:absolute;line-height:1;filter:grayscale(0.15);
+    animation-name:twinkle;animation-timing-function:ease-in-out;animation-iteration-count:infinite;
+  }
+  @keyframes twinkle{
+    0%,100%{ opacity:0; }
+    50%{ opacity:var(--peak,0.18); }
+  }
+  body > *:not(.bg-apples):not(.postcardModal){ position:relative; z-index:1; }
+
   .topbar{display:flex;justify-content:space-between;align-items:flex-start;padding:22px 5vw 0;}
   .back{color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;opacity:0.8;}
   .back:hover{opacity:1;}
@@ -108,6 +119,7 @@
 </style>
 </head>
 <body>
+<div class="bg-apples" id="bgApples"></div>
 <div id="debugErr" style="position:fixed;top:60px;left:5vw;right:5vw;z-index:50;font:11px monospace;color:#b00020;background:rgba(255,255,255,0.95);border:1px solid #b00020;border-radius:8px;padding:8px;display:none;white-space:pre-wrap;max-height:30vh;overflow:auto;"></div>
 
 <div class="topbar">
@@ -164,6 +176,26 @@ function showErr(msg){
   el.textContent += msg + '\n';
 }
 window.addEventListener('error', e=> showErr('Error: ' + e.message));
+
+/* ---------- slow twinkling background apples ---------- */
+(function(){
+  const host = document.getElementById('bgApples');
+  const COUNT = 11;
+  for(let i=0;i<COUNT;i++){
+    const span = document.createElement('span');
+    span.className = 'bg-apple';
+    span.textContent = '\u{1F34E}';
+    const size = 90 + Math.random()*170;
+    span.style.fontSize = size + 'px';
+    span.style.left = (Math.random()*90) + 'vw';
+    span.style.top = (Math.random()*90) + 'vh';
+    span.style.setProperty('--peak', (0.1 + Math.random()*0.16).toFixed(2));
+    const duration = 8 + Math.random()*10;
+    span.style.animationDuration = duration + 's';
+    span.style.animationDelay = (-Math.random()*duration) + 's';
+    host.appendChild(span);
+  }
+})();
 
 const ERAS = [
   { id:'durer', year:'1507', title:"Dürer's Adam and Eve",
