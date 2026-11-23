@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple No.129 — Result</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#1b1210; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;background:#ffffff;}
+  body{font-family:'Pathway Extreme',sans-serif;color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
+
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;padding:22px 5vw 0;}
+  .back{color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;opacity:0.8;cursor:pointer;}
+  .back:hover{opacity:1;}
+  .brandmark{font-family:'Notable',sans-serif;font-size:18px;letter-spacing:0.02em;opacity:0.85;}
+
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 6vw 50px;gap:18px;text-align:center;}
+
+  .stamp{
+    font-family:'Notable',sans-serif;font-size:clamp(28px,5vw,44px);letter-spacing:0.04em;
+    border:5px solid; border-radius:14px; padding:10px 30px;
+    transform:rotate(-6deg) scale(0.8); opacity:0; transition:opacity .6s ease, transform .6s cubic-bezier(.34,1.3,.64,1);
+  }
+  .stamp.show{opacity:1; transform:rotate(-6deg) scale(1);}
+  .stamp.pass{color:#2f8350;border-color:#2f8350;}
+  .stamp.fail{color:#c8102e;border-color:#c8102e;}
+
+  .result-note{max-width:480px;font-size:13.5px;line-height:1.6;opacity:0.65;}
+
+  .scene-slot{
+    position:relative;width:min(560px,88vw);aspect-ratio:4/3;border-radius:16px;
+    overflow:hidden;background:rgba(0,0,0,0.04) center/cover no-repeat;
+    box-shadow:0 14px 34px rgba(0,0,0,0.14);
+  }
+  .scene-apple{
+    position:absolute;cursor:grab;touch-action:none;user-select:none;-webkit-user-drag:none;
+    object-fit:contain;
+    filter:drop-shadow(0 10px 14px rgba(0,0,0,0.45)) drop-shadow(0 2px 5px rgba(0,0,0,0.35));
+  }
+  .scene-apple.grabbing{cursor:grabbing;}
+  .resize-handle{
+    position:absolute;width:16px;height:16px;border-radius:50%;
+    background:#fff;border:2.5px solid #c8102e;cursor:nwse-resize;touch-action:none;
+    box-shadow:0 2px 5px rgba(0,0,0,0.3);
+  }
+  .drag-hint{font-size:11px;opacity:0.45;margin-top:-6px;}
+
+  .exportBtn{
+    font-family:'Notable',sans-serif;font-weight:400;font-size:13px;color:#fff;
+    background:linear-gradient(135deg,#c75a56 0%, #e8a6a0 55%, #f0c2b8 100%);
+    border:none;border-radius:999px;padding:0.6em 1.4em 0.7em;cursor:pointer;
+    box-shadow:0 8px 18px rgba(60,10,10,0.25), inset 0 2px 4px rgba(255,255,255,0.35);
+    margin-top:4px;
+  }
+  .exportBtn:active{transform:translateY(1px);}
+
+  .postcardModal{
+    position:fixed;inset:0;z-index:40;background:rgba(20,12,10,0.72);
+    display:none;align-items:center;justify-content:center;padding:4vh 4vw;
+  }
+  .postcardPanel{
+    background:#fff;border-radius:18px;padding:26px 28px 30px;
+    max-width:520px;width:100%;max-height:90vh;overflow:auto;
+    box-shadow:0 30px 60px rgba(0,0,0,0.4);
+    display:flex;flex-direction:column;align-items:center;gap:16px;
+  }
+  .postcardPanel-head{display:flex;justify-content:space-between;align-items:center;width:100%;}
+  .postcardPanel h2{font-family:'Notable',sans-serif;font-weight:400;font-size:18px;margin:0;}
+  .postcardClose{background:none;border:none;font-size:22px;line-height:1;cursor:pointer;opacity:0.5;padding:4px;}
+  .postcardClose:hover{opacity:1;}
+  .postcardHint{font-size:12px;opacity:0.55;margin:-4px 0 4px;text-align:center;}
+  .postcardGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;width:100%;}
+  .postcard-cell{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .postcard-thumb{width:100%;height:auto;border-radius:8px;cursor:pointer;border:1.5px solid rgba(0,0,0,0.1);transition:transform .15s ease, box-shadow .15s ease;}
+  .postcard-thumb:hover{transform:translateY(-3px);box-shadow:0 10px 20px rgba(0,0,0,0.18);}
+  .postcard-label{font-weight:700;font-size:12px;opacity:0.7;}
+  @media (max-width:420px){ .postcardGrid{grid-template-columns:1fr;} }
+
+  #debugErr{
+    position:fixed;top:90px;left:5vw;right:5vw;z-index:50;font:11px monospace;color:#b00020;
+    background:rgba(255,255,255,0.95);border:1px solid #b00020;border-radius:8px;padding:8px;
+    display:none;white-space:pre-wrap;max-height:30vh;overflow:auto;
+  }
+</style>
+</head>
+<body>
+<div id="debugErr"></div>
+
+<div class="topbar">
+  <a class="back" id="backLink">&larr; BACK</a>
+  <div class="brandmark">APPLE NO.129</div>
+</div>
+
+<div class="stage">
+  <div class="stamp" id="stampEl"></div>
+  <div class="result-note" id="resultNote"></div>
+  <div class="scene-slot" id="sceneSlot"></div>
+  <div class="drag-hint" id="dragHint" style="display:none;">Drag your apple to move it &middot; drag the dot to resize</div>
+  <button class="exportBtn" id="exportBtn" style="display:none;">EXPORT POSTCARD</button>
+  <button class="exportBtn" id="shareBtn" style="display:none;">SHARE YOUR POSTCARD</button>
+</div>
+
+<div class="postcardModal" id="postcardModal">
+  <div class="postcardPanel">
+    <div class="postcardPanel-head">
+      <h2>Choose a version</h2>
+      <button class="postcardClose" id="postcardClose">&times;</button>
+    </div>
+    <div class="postcardHint" id="postcardHint">Click a version to save it to your device.</div>
+    <div class="postcardGrid" id="postcardGrid"></div>
+  </div>
+</div>
+
+<script>
+function showErr(msg){
+  const el = document.getElementById('debugErr');
+  el.style.display = 'block';
+  el.textContent += msg + '\n';
+}
+window.addEventListener('error', e=> showErr('Error: ' + e.message));
+
+document.getElementById('backLink').addEventListener('click', ()=>{
+  if(document.referrer){ history.back(); } else { window.location.href = 'grading.html'; }
+});
+
+let userName = 'You', appleName = 'your apple';
+try{
+  userName = localStorage.getItem('apple129_username') || userName;
+  appleName = localStorage.getItem('apple129_applename') || appleName;
+}catch(e){}
+
+let artwork = null;
+try{ artwork = localStorage.getItem('apple129_artwork'); }catch(e){}
+
+let result = null;
+try{ result = localStorage.getItem('apple129_gradeResult'); }catch(e){}
+
+let gradeDetails = null;
+try{ gradeDetails = JSON.parse(localStorage.getItem('apple129_gradeDetails') || 'null'); }catch(e){}
+
+const SLOTS = {
+  pass: { left:36, top:52, width:20 },
+  fail: { left:34, top:40, width:18 }
+};
+
+if(result !== 'pass' && result !== 'fail'){
+  window.location.href = 'grading.html';
+} else {
+  const pass = result === 'pass';
+  const bgSrc = pass ? 'assets/shelf.jpg' : 'assets/trash.jpg';
+  const stampEl = document.getElementById('stampEl');
+  const noteEl = document.getElementById('resultNote');
+  const slotEl = document.getElementById('sceneSlot');
+  const noteText = pass
+    ? ('After layer upon layer of inspection, ' + appleName + ' has finally reached the supermarket shelf — one more apple among thousands that all look exactly the same.')
+    : ('Once, ' + appleName + ' held infinite possibility. But under today’s strict commercial standards, it didn’t make the cut — and has ended up here, where unwanted food is thrown away.');
+
+  stampEl.classList.add(pass ? 'pass' : 'fail');
+  stampEl.textContent = pass ? 'GRADE A' : 'REJECTED';
+  noteEl.textContent = noteText;
+  slotEl.style.backgroundImage = "url('" + bgSrc + "')";
+
+  const sceneImg = new Image();
+  sceneImg.src = bgSrc;
+
+  if(artwork){
+    const slot = SLOTS[pass ? 'pass' : 'fail'];
+    const appleImg = document.createElement('img');
+    appleImg.className = 'scene-apple';
+    appleImg.draggable = false;
+    appleImg.src = artwork;
+    appleImg.style.left = slot.left + '%';
+    appleImg.style.top = slot.top + '%';
+    appleImg.style.width = slot.width + '%';
+    appleImg.style.height = 'auto';
+    slotEl.appendChild(appleImg);
+
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    slotEl.appendChild(resizeHandle);
+
+    function positionResizeHandle(){
+      const r = appleImg.getBoundingClientRect();
+      const vr = slotEl.getBoundingClientRect();
+      resizeHandle.style.left = (r.right - vr.left - 8) + 'px';
+      resizeHandle.style.top = (r.bottom - vr.top - 8) + 'px';
+    }
+    appleImg.onload = positionResizeHandle;
+    setTimeout(positionResizeHandle, 50);
+
+    let dragState = null;
+    appleImg.addEventListener('pointerdown', e=>{
+      e.stopPropagation();
+      const vr = slotEl.getBoundingClientRect();
+      dragState = {
+        startX: e.clientX, startY: e.clientY,
+        origLeftPct: parseFloat(appleImg.style.left),
+        origTopPct: parseFloat(appleImg.style.top),
+        vrW: vr.width, vrH: vr.height
+      };
+      appleImg.classList.add('grabbing');
+      appleImg.setPointerCapture(e.pointerId);
+    });
+    appleImg.addEventListener('pointermove', e=>{
+      if(!dragState) return;
+      const dxPct = (e.clientX - dragState.startX) / dragState.vrW * 100;
+      const dyPct = (e.clientY - dragState.startY) / dragState.vrH * 100;
+      appleImg.style.left = (dragState.origLeftPct + dxPct) + '%';
+      appleImg.style.top = (dragState.origTopPct + dyPct) + '%';
+      positionResizeHandle();
+    });
+    appleImg.addEventListener('pointerup', ()=>{ dragState=null; appleImg.classList.remove('grabbing'); });
+    appleImg.addEventListener('pointercancel', ()=>{ dragState=null; appleImg.classList.remove('grabbing'); });
+
+    let resizeState = null;
+    resizeHandle.addEventListener('pointerdown', e=>{
+      e.stopPropagation();
+      const vr = slotEl.getBoundingClientRect();
+      resizeState = {
+        startX: e.clientX,
+        origWidthPct: parseFloat(appleImg.style.width),
+        vrW: vr.width
+      };
+      resizeHandle.setPointerCapture(e.pointerId);
+    });
+    resizeHandle.addEventListener('pointermove', e=>{
+      if(!resizeState) return;
+      const dPct = (e.clientX - resizeState.startX) / resizeState.vrW * 100;
+      let w = resizeState.origWidthPct + dPct;
+      w = Math.max(4, Math.min(70, w));
+      appleImg.style.width = w + '%';
+      positionResizeHandle();
+    });
+    resizeHandle.addEventListener('pointerup', ()=> resizeState=null);
+    resizeHandle.addEventListener('pointercancel', ()=> resizeState=null);
+
+    appleImg.addEventListener('wheel', e=>{
+      e.preventDefault();
+      let w = parseFloat(appleImg.style.width);
+      w *= (e.deltaY < 0 ? 1.07 : 0.93);
+      w = Math.max(4, Math.min(70, w));
+      appleImg.style.width = w + '%';
+      positionResizeHandle();
+    }, { passive:false });
+
+    window.addEventListener('resize', positionResizeHandle);
+
+    document.getElementById('dragHint').style.display = 'block';
+    document.getElementById('exportBtn').style.display = 'inline-flex';
+    document.getElementById('shareBtn').style.display = 'inline-flex';
+
+    /* ---------- export: single white postcard with stamp + note ---------- */
+    function drawCover(ctx, img, dx, dy, dw, dh){
+      const ir = img.naturalWidth / img.naturalHeight;
+      const dr = dw / dh;
+      let sx, sy, sw, sh;
+      if(ir > dr){
+        sh = img.naturalHeight; sw = sh * dr;
+        sx = (img.naturalWidth - sw) / 2; sy = 0;
+      } else {
+        sw = img.naturalWidth; sh = sw / dr;
+        sx = 0; sy = (img.naturalHeight - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    }
+
+    function wrapLines(ctx, text, maxWidth){
+      const words = text.split(' ');
+      const lines = [];
+      let line = '';
+      for(let n = 0; n < words.length; n++){
+        const test = (line + words[n] + ' ');
+        if(ctx.measureText(test).width > maxWidth && line){
+          lines.push(line.trim());
+          line = words[n] + ' ';
+        } else {
+          line = test;
+        }
+      }
+      if(line) lines.push(line.trim());
+      return lines;
+    }
+
+    function drawAppleOnScene(ctx, border, imgW, imgH){
+      if(!(appleImg.complete && appleImg.naturalWidth)) return;
+      const leftPct = parseFloat(appleImg.style.left);
+      const topPct = parseFloat(appleImg.style.top);
+      const widthPct = parseFloat(appleImg.style.width);
+      const aw = (widthPct/100) * imgW;
+      const ah = aw * (appleImg.naturalHeight / appleImg.naturalWidth);
+      const ax = border + (leftPct/100) * imgW;
+      const ay = border + (topPct/100) * imgH;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.45)';
+      ctx.shadowBlur = 16;
+      ctx.shadowOffsetY = 8;
+      ctx.drawImage(appleImg, ax, ay, aw, ah);
+      ctx.restore();
+    }
+
+    function drawStamp(ctx, cx, cy, angleDeg, fontSize){
+      const stampColor = pass ? '#2f8350' : '#c8102e';
+      const stampText = pass ? 'GRADE A' : 'REJECTED';
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(angleDeg * Math.PI/180);
+      ctx.font = '700 ' + fontSize + 'px Notable, sans-serif';
+      ctx.textAlign = 'center';
+      const stw = ctx.measureText(stampText).width;
+      const pad = fontSize*0.55, h = fontSize*1.75;
+      ctx.lineWidth = Math.max(3, fontSize*0.16);
+      ctx.strokeStyle = stampColor;
+      ctx.strokeRect(-stw/2 - pad, -h/2, stw + pad*2, h);
+      ctx.fillStyle = stampColor;
+      ctx.fillText(stampText, 0, fontSize*0.32);
+      ctx.restore();
+    }
+
+    /* ---------- template A: scene postcard ---------- */
+    function exportScenePostcard(){
+      const W = 700, border = 60;
+      const imgW = W - border*2, imgH = imgW * 0.75;
+
+      const noteFont = '14.5px Georgia, "Times New Roman", serif';
+      const measure = document.createElement('canvas').getContext('2d');
+      measure.font = noteFont;
+      const noteLines = wrapLines(measure, noteText, W - border*2);
+      const noteH = noteLines.length * 21;
+
+      const H = border + imgH + 28 + noteH + border;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H);
+
+      drawCover(ctx, sceneImg, border, border, imgW, imgH);
+      drawAppleOnScene(ctx, border, imgW, imgH);
+
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(border, border, imgW, imgH);
+
+      drawStamp(ctx, 555, 80, 16, 32);
+
+      ctx.fillStyle = '#2a2320';
+      ctx.font = noteFont;
+      ctx.textAlign = 'center';
+      let ny = border + imgH + 28;
+      noteLines.forEach(ln=>{
+        ctx.fillText(ln, W/2, ny);
+        ny += 21;
+      });
+
+      return canvas;
+    }
+
+    /* ---------- template B: score report postcard ---------- */
+    function drawMiniGauge(ctx, cx, cy, r, score){
+      const color = score >= 80 ? '#4caf6d' : score >= 50 ? '#e0a83a' : '#c8102e';
+      ctx.lineWidth = r*0.24;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, 2*Math.PI); ctx.stroke();
+      ctx.strokeStyle = color;
+      ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI, Math.PI + (score/100)*Math.PI); ctx.stroke();
+      const angle = Math.PI + (score/100)*Math.PI;
+      ctx.lineWidth = 3; ctx.strokeStyle = '#1b1210'; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + r*0.82*Math.cos(angle), cy + r*0.82*Math.sin(angle));
+      ctx.stroke();
+      ctx.fillStyle = '#1b1210';
+      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI*2); ctx.fill();
+    }
+
+    function exportScoreCard(){
+      const W = 700, margin = 50;
+      const scratch = document.createElement('canvas');
+      scratch.width = W; scratch.height = 1100;
+      const ctx = scratch.getContext('2d');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, scratch.height);
+
+      let y = 44;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#1b1210';
+      ctx.font = '700 24px Georgia, "Times New Roman", serif';
+      ctx.fillText('OFFICIAL GRADING REPORT', W/2, y);
+      y += 24;
+      ctx.font = 'italic 13px Georgia, serif';
+      ctx.fillStyle = '#6b5d52';
+      ctx.fillText('Apple ' + appleName + ' · graded against real commercial standards', W/2, y);
+      y += 26;
+
+      const imgW = W - margin*2, imgH = imgW * 0.56;
+      drawCover(ctx, sceneImg, margin, y, imgW, imgH);
+      drawAppleOnScene(ctx, margin, imgW, imgH);
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(margin, y, imgW, imgH);
+      drawStamp(ctx, margin + imgW - 80, y + 36, 14, 24);
+      y += imgH + 50;
+
+      const details = gradeDetails || [];
+      const n = details.length || 5;
+      const cellW = (W - margin*2) / n;
+      const gaugeR = Math.min(34, cellW*0.36);
+      details.forEach((d, i)=>{
+        const cx = margin + cellW*i + cellW/2;
+        ctx.font = '700 10px Pathway Extreme, Arial, sans-serif';
+        ctx.fillStyle = '#6b5d52';
+        ctx.textAlign = 'center';
+        ctx.fillText(d.label.toUpperCase(), cx, y);
+        drawMiniGauge(ctx, cx, y + gaugeR + 14, gaugeR, d.score);
+        ctx.font = '700 11px Pathway Extreme, Arial, sans-serif';
+        ctx.fillStyle = '#1b1210';
+        ctx.fillText(d.valueText, cx, y + gaugeR + 36);
+      });
+      y += gaugeR + 60;
+
+      y += 10;
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(W-margin, y); ctx.stroke();
+      y += 26;
+
+      const noteFont = '13.5px Georgia, "Times New Roman", serif';
+      ctx.font = noteFont;
+      const noteLines = wrapLines(ctx, noteText, W - margin*2);
+      ctx.fillStyle = '#2a2320';
+      noteLines.forEach(ln=>{
+        ctx.fillText(ln, W/2, y);
+        y += 20;
+      });
+      y += 14;
+
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = W;
+      finalCanvas.height = Math.ceil(y);
+      finalCanvas.getContext('2d').drawImage(scratch, 0, 0);
+      return finalCanvas;
+    }
+
+    const POSTCARD_TEMPLATES = [
+      { id:'scene', label:'Postcard', build: exportScenePostcard }
+    ];
+    if(gradeDetails && gradeDetails.length){
+      POSTCARD_TEMPLATES.push({ id:'score', label:'Grading report', build: exportScoreCard });
+    }
+
+    function downloadCanvas(canvas, id){
+      const link = document.createElement('a');
+      link.download = 'apple129-' + (pass ? 'graded' : 'rejected') + '-' + id + '.png';
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function shareCanvas(canvas){
+      try{
+        localStorage.setItem('apple129_share_draft', canvas.toDataURL('image/png'));
+      }catch(e){ showErr('share failed: ' + e.message); return; }
+      window.location.href = 'forum.html';
+    }
+
+    function openPostcardModal(mode){
+      const grid = document.getElementById('postcardGrid');
+      grid.innerHTML = '';
+      document.getElementById('postcardHint').textContent = mode === 'share'
+        ? 'Click a version to share it to the Orchard Board.'
+        : 'Click a version to save it to your device.';
+      POSTCARD_TEMPLATES.forEach(tpl=>{
+        const canvas = tpl.build();
+        canvas.className = 'postcard-thumb';
+        canvas.title = mode === 'share' ? 'Click to share this version' : 'Click to save this version';
+        canvas.addEventListener('click', ()=>{
+          if(mode === 'share') shareCanvas(canvas);
+          else downloadCanvas(canvas, tpl.id);
+        });
+
+        const label = document.createElement('div');
+        label.className = 'postcard-label';
+        label.textContent = tpl.label;
+
+        const cell = document.createElement('div');
+        cell.className = 'postcard-cell';
+        cell.appendChild(canvas);
+        cell.appendChild(label);
+        grid.appendChild(cell);
+      });
+      document.getElementById('postcardModal').style.display = 'flex';
+    }
+
+    document.getElementById('exportBtn').addEventListener('click', ()=>{
+      try{ openPostcardModal('download'); }catch(e){ showErr('export failed: ' + e.message); }
+    });
+    document.getElementById('shareBtn').addEventListener('click', ()=>{
+      try{ openPostcardModal('share'); }catch(e){ showErr('share failed: ' + e.message); }
+    });
+    document.getElementById('postcardClose').addEventListener('click', ()=>{
+      document.getElementById('postcardModal').style.display = 'none';
+    });
+    document.getElementById('postcardModal').addEventListener('click', e=>{
+      if(e.target.id === 'postcardModal') document.getElementById('postcardModal').style.display = 'none';
+    });
+  }
+
+  setTimeout(()=> stampEl.classList.add('show'), 150);
+}
+</script>
+<script>
+(function(){
+  var CLICK_SOUND_B64 = "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VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tyZHSP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+3BkdQ/wAABpAAAACAAADSAAAAEAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjk5LjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tyZHSP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+3BkdQ/wAABpAAAACAAADSAAAAEAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==";
+  var clickAudioEl = null;
+  function playUiClickSound(){
+    try{
+      if(!clickAudioEl){ clickAudioEl = new Audio('data:audio/mp3;base64,' + CLICK_SOUND_B64); }
+      var a = clickAudioEl.cloneNode(true);
+      a.volume = 0.55;
+      a.play().catch(function(){});
+    }catch(e){}
+  }
+  document.addEventListener('click', function(e){
+    var el = e.target.closest('button, a');
+    if(!el) return;
+    if(el.classList.contains('scent-btn') || el.classList.contains('bite-btn')) return;
+    if(el.dataset && el.dataset.noClickSound) return;
+    playUiClickSound();
+  }, true);
+})();
+</script>
+</body>
+</html>

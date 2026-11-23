@@ -6,7 +6,7 @@
 <title>Apple No.129 — Journey</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&family=Caveat:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{ --ink:#1b1210; }
   *{box-sizing:border-box;}
@@ -19,6 +19,15 @@
   .brandmark{font-family:'Notable',sans-serif;font-size:18px;letter-spacing:0.02em;opacity:0.85;}
   .kicker{text-align:center;font-weight:800;font-size:clamp(14px,1.8vw,20px);text-transform:uppercase;letter-spacing:0.03em;opacity:0.85;margin-top:4px;}
   .namebadge{text-align:center;font-size:11px;opacity:0.5;margin-top:2px;}
+  .gradingEntry{
+    display:inline-flex;align-items:center;justify-content:center;align-self:center;margin:10px auto 0;
+    font-family:'Notable',sans-serif;font-weight:400;font-size:13px;color:#fff;text-decoration:none;
+    background:linear-gradient(135deg,#c75a56 0%, #e8a6a0 55%, #f0c2b8 100%);
+    border:none;border-radius:999px;padding:0.6em 1.4em 0.7em;cursor:pointer;
+    box-shadow:0 8px 18px rgba(60,10,10,0.25), inset 0 2px 4px rgba(255,255,255,0.35);
+    width:fit-content;
+  }
+  .gradingEntry:active{transform:translateY(1px);}
 
   .stage{
     flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -43,6 +52,10 @@
     display:none;
   }
   .apple-layer.grabbing{cursor:grabbing;}
+  .apple-layer-fixed{
+    position:absolute;pointer-events:none;user-select:none;-webkit-user-drag:none;
+    object-fit:contain;filter:grayscale(1);display:none;
+  }
   .resize-handle{
     position:absolute;width:16px;height:16px;border-radius:50%;
     background:#fff;border:2.5px solid #c8102e;cursor:nwse-resize;touch-action:none;
@@ -61,6 +74,27 @@
     display:inline-flex;align-items:center;justify-content:center;line-height:1;margin-top:2px;
   }
   .exportBtn:active{transform:translateY(1px);}
+
+  .postcardModal{
+    position:fixed;inset:0;z-index:40;background:rgba(20,12,10,0.72);
+    display:none;align-items:center;justify-content:center;padding:4vh 4vw;
+  }
+  .postcardPanel{
+    background:#fff;border-radius:18px;padding:26px 28px 30px;
+    max-width:760px;width:100%;max-height:90vh;overflow:auto;
+    box-shadow:0 30px 60px rgba(0,0,0,0.4);
+  }
+  .postcardPanel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .postcardPanel h2{font-family:'Notable',sans-serif;font-weight:400;font-size:20px;margin:0;}
+  .postcardClose{background:none;border:none;font-size:22px;line-height:1;cursor:pointer;opacity:0.5;padding:4px;}
+  .postcardClose:hover{opacity:1;}
+  .postcardHint{font-size:12.5px;opacity:0.55;margin:2px 0 18px;}
+  .postcardGrid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .postcard-cell{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .postcard-thumb{width:100%;height:auto;border-radius:8px;cursor:pointer;border:1.5px solid rgba(0,0,0,0.1);transition:transform .15s ease, box-shadow .15s ease;}
+  .postcard-thumb:hover{transform:translateY(-3px);box-shadow:0 10px 20px rgba(0,0,0,0.18);}
+  .postcard-label{font-weight:700;font-size:12px;opacity:0.7;}
+  @media (max-width:560px){ .postcardGrid{grid-template-columns:1fr;} }
   .drag-hint{font-size:11px;opacity:0.45;margin-top:-6px;}
 
   .timeline-wrap{padding:6px 6vw 36px;}
@@ -82,6 +116,7 @@
 </div>
 <div class="kicker">Your apple's journey</div>
 <div class="namebadge" id="nameBadge"></div>
+<a class="gradingEntry" href="grading.html">ENTER GRADING SYSTEM &rarr;</a>
 
 <div class="stage">
   <div class="era-head">
@@ -94,18 +129,31 @@
     <div class="bg-blank" id="bgBlank" style="display:none;"></div>
     <img class="apple-layer" id="appleLayer" draggable="false">
     <div class="resize-handle" id="resizeHandle"></div>
+    <img class="apple-layer-fixed" id="appleLayerFixed" draggable="false">
   </div>
 
   <div class="story" id="eraStory">Story text.</div>
   <div class="callout" id="eraCallout"></div>
   <div class="drag-hint" id="dragHint">Drag your apple to move it &middot; drag the dot to resize</div>
   <button class="exportBtn" id="exportBtn">EXPORT POSTCARD</button>
+  <button class="exportBtn" id="shareBtn">SHARE YOUR POSTCARD</button>
 </div>
 
 <div class="timeline-wrap">
   <div class="timeline" id="timeline">
     <div class="track"></div>
     <div class="trackFill" id="trackFill"></div>
+  </div>
+</div>
+
+<div class="postcardModal" id="postcardModal">
+  <div class="postcardPanel">
+    <div class="postcardPanel-head">
+      <h2>Choose a version</h2>
+      <button class="postcardClose" id="postcardClose">&times;</button>
+    </div>
+    <div class="postcardHint" id="postcardHint">Click a version to save it to your device.</div>
+    <div class="postcardGrid" id="postcardGrid"></div>
   </div>
 </div>
 
@@ -118,28 +166,25 @@ function showErr(msg){
 window.addEventListener('error', e=> showErr('Error: ' + e.message));
 
 const ERAS = [
-  { id:'eden', year:'Myth', title:'The Garden of Eden',
-    story:"Genesis never actually says the forbidden fruit was an apple — the Hebrew text just says “fruit.” The apple we picture came centuries later, from a Latin pun (malum meant both “apple” and “evil”) and from painters who fixed the image in the Western imagination. The “original” apple only exists because someone, long ago, decided to imagine it that way.",
-    ready:false },
-  { id:'paris', year:'Greek myth', title:'The Judgment of Paris',
-    story:"Eris, goddess of discord, threw a golden apple inscribed “to the fairest” among three goddesses, starting the rivalry that led to the Trojan War. It was never a real apple — it was a prize, a symbol, a trigger for conflict.",
-    ready:false },
   { id:'durer', year:'1507', title:"Dürer's Adam and Eve",
     story:"Dürer's life-sized panel paintings gave the forbidden fruit its most famous face: round, smooth, faintly golden-red. This single image did more than any sermon to fix “what the apple looked like” in Western art.",
-    ready:false },
+    ready:true, bg:'assets/durer.jpg', bgPosition:'center top', slot:{ left:84, top:39, width:10 } },
+  { id:'paris', year:'c.1635', title:'The Judgment of Paris',
+    story:"Eris, goddess of discord, threw a golden apple inscribed “to the fairest” among three goddesses, starting the rivalry that led to the Trojan War. It was never a real apple — it was a prize, a symbol, a trigger for conflict.",
+    ready:true, bg:'assets/paris.jpg', slot:{ left:43, top:41, width:13 } },
   { id:'newton', year:'1666 / 1726', title:"Newton's Apple",
     story:"Newton told people late in his life that watching an apple fall from a tree helped him think about gravity. The earliest written account, from 1726, says nothing about it hitting his head — that detail was invented more than a century later.",
-    ready:false },
+    ready:true, bg:'assets/newton.jpg', slot:{ left:11, top:40, width:11 },
+    fixedSlot:{ left:77.6, top:27.2, width:18.6, height:21.3 } },
   { id:'cezanne', year:'c.1890s', title:"Cézanne's Apples",
     story:"Cézanne painted apples obsessively for decades, deliberately refusing to make them look smooth or perfectly round. His loose, colour-built fruit argued — a century before any supermarket standard — against the idea that an apple should be judged by how closed and uniform its shape is.",
     ready:true, bg:'assets/cezanne.jpg', slot:{ left:58, top:46, width:14 } },
-  { id:'bigapple', year:'1920s–today', title:'The Big Apple',
+  { id:'bigapple', year:'1920s', title:'The Big Apple',
     story:"New York's nickname has nothing to do with real apples. It began as 1920s horse-racing slang, was picked up by jazz musicians in the 1930s, and became official tourism branding in the 1970s. By the 20th century, “apple” had become a word you could borrow — a symbol untethered from the fruit itself.",
-    ready:false }
+    ready:true, bg:'assets/bigapple.jpg', slot:{ left:34, top:18, width:32 } }
 ];
 
 const CALLOUTS = {
-  eden:    (u,a)=> `If Adam and Eve had taken a bite of ${a}, would the story have gone the same way?`,
   paris:   (u,a)=> `What if the golden apple Paris handed to Aphrodite had looked exactly like ${a}?`,
   durer:   (u,a)=> `Dürer painted the forbidden fruit perfectly round — what if he'd painted ${a} instead?`,
   newton:  (u,a)=> `Oh my — the apple that fell on Newton's head turns out to have looked just like ${a}.`,
@@ -148,7 +193,6 @@ const CALLOUTS = {
 };
 
 const NEWSLEADS = {
-  eden:    (u,a)=> `EXCLUSIVE — The fruit picked in the garden today has been identified as ${a}, grown by ${u}.`,
   paris:   (u,a)=> `DISPATCH FROM MT. IDA — The golden apple at the centre of the gods' quarrel has been identified as ${a}, grown by ${u}.`,
   durer:   (u,a)=> `STUDIO NOTES, NUREMBERG — Albrecht Dürer has just sketched ${a}, an apple grown by ${u}, as the forbidden fruit of Eden.`,
   newton:  (u,a)=> `REPORTED TODAY — An apple grown by ${u}, named ${a}, has just fallen on Sir Isaac Newton's head.`,
@@ -173,6 +217,7 @@ const trackFill = document.getElementById('trackFill');
 const bgPainting = document.getElementById('bgPainting');
 const bgBlank = document.getElementById('bgBlank');
 const appleLayer = document.getElementById('appleLayer');
+const appleLayerFixed = document.getElementById('appleLayerFixed');
 const resizeHandle = document.getElementById('resizeHandle');
 const dragHint = document.getElementById('dragHint');
 
@@ -227,21 +272,21 @@ function renderEra(i){
   appleLayer.style.display = 'none';
   resizeHandle.style.display = 'none';
   dragHint.style.display = 'none';
+  appleLayerFixed.style.display = 'none';
 
-  const isCezanne = era.id === 'cezanne';
   const storyEl = document.getElementById('eraStory');
   const calloutEl = document.getElementById('eraCallout');
 
-  if(isCezanne){
+  if(era.bg){
     bgPainting.src = era.bg;
     bgPainting.style.display = 'block';
+    bgPainting.style.objectPosition = era.bgPosition || 'center center';
     bgPainting.onerror = ()=> showErr('could not load image: ' + era.bg);
-    storyEl.style.display = 'none';
   } else {
     bgBlank.style.display = 'block';
-    storyEl.style.display = 'block';
-    storyEl.textContent = 'An introduction for this stop will be added here.';
   }
+  storyEl.style.display = 'block';
+  storyEl.textContent = era.ready ? era.story : 'An introduction for this stop will be added here.';
 
   const calloutFn = CALLOUTS[era.id];
   calloutEl.textContent = calloutFn ? calloutFn(userName, appleName) : '';
@@ -254,6 +299,16 @@ function renderEra(i){
     resizeHandle.style.display = 'block';
     dragHint.style.display = 'block';
     placeAppleLayer(slot);
+  }
+
+  if(era.fixedSlot && artwork){
+    const fs = era.fixedSlot;
+    appleLayerFixed.src = artwork;
+    appleLayerFixed.style.left = fs.left + '%';
+    appleLayerFixed.style.top = fs.top + '%';
+    appleLayerFixed.style.width = fs.width + '%';
+    appleLayerFixed.style.height = fs.height + '%';
+    appleLayerFixed.style.display = 'block';
   }
 }
 
@@ -338,8 +393,9 @@ appleLayer.addEventListener('wheel', e=>{
 
 window.addEventListener('resize', ()=> positionResizeHandle());
 
-/* ---------- postcard export ---------- */
-function drawCover(ctx, img, dx, dy, dw, dh){
+/* ---------- postcard export: 4 selectable templates ---------- */
+function drawCover(ctx, img, dx, dy, dw, dh, posY){
+  posY = posY === undefined ? 0.5 : posY;
   const ir = img.naturalWidth / img.naturalHeight;
   const dr = dw / dh;
   let sx, sy, sw, sh;
@@ -348,9 +404,16 @@ function drawCover(ctx, img, dx, dy, dw, dh){
     sx = (img.naturalWidth - sw) / 2; sy = 0;
   } else {
     sw = img.naturalWidth; sh = sw / dr;
-    sx = 0; sy = (img.naturalHeight - sh) / 2;
+    sx = 0; sy = (img.naturalHeight - sh) * posY;
   }
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+function bgPosYFromEra(era){
+  const p = era.bgPosition || '';
+  if(p.indexOf('top') !== -1) return 0;
+  if(p.indexOf('bottom') !== -1) return 1;
+  return 0.5;
 }
 
 function wrapText(ctx, text, x, y, maxWidth, lineHeight, align){
@@ -376,90 +439,442 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, align){
   }
 }
 
-function exportPostcard(){
-  const era = ERAS[current];
-  const W = 800, IMG_H = 600, TXT_H = 640;
-  const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = IMG_H + TXT_H;
-  const ctx = canvas.getContext('2d');
-
-  /* image area */
-  if(era.id === 'cezanne' && bgPainting.complete && bgPainting.naturalWidth){
-    drawCover(ctx, bgPainting, 0, 0, W, IMG_H);
+/* composites the painting + the user's apple into an arbitrary rect (must stay 4:3 to match the on-page slot percentages) */
+function compositeArtwork(ctx, era, dx, dy, dw, dh){
+  if(era.bg && bgPainting.complete && bgPainting.naturalWidth){
+    drawCover(ctx, bgPainting, dx, dy, dw, dh, bgPosYFromEra(era));
     ctx.fillStyle = 'rgba(90,60,30,0.07)';
-    ctx.fillRect(0, 0, W, IMG_H);
+    ctx.fillRect(dx, dy, dw, dh);
   } else {
     ctx.fillStyle = '#f3ece7';
-    ctx.fillRect(0, 0, W, IMG_H);
+    ctx.fillRect(dx, dy, dw, dh);
   }
-
   if(artwork && appleLayer.complete && appleLayer.naturalWidth){
     const slot = era.slot || { left:38, top:30, width:24 };
     const leftPct = parseFloat(appleLayer.style.left) || slot.left;
     const topPct = parseFloat(appleLayer.style.top) || slot.top;
     const widthPct = parseFloat(appleLayer.style.width) || slot.width;
-    const dw = (widthPct/100) * W;
-    const dh = dw * (appleLayer.naturalHeight / appleLayer.naturalWidth);
-    const dx = (leftPct/100) * W;
-    const dy = (topPct/100) * IMG_H;
+    const aw = (widthPct/100) * dw;
+    const ah = aw * (appleLayer.naturalHeight / appleLayer.naturalWidth);
+    const ax = dx + (leftPct/100) * dw;
+    const ay = dy + (topPct/100) * dh;
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.45)';
-    ctx.shadowBlur = 18;
-    ctx.shadowOffsetY = 10;
-    ctx.drawImage(appleLayer, dx, dy, dw, dh);
+    ctx.shadowBlur = dw * 0.022;
+    ctx.shadowOffsetY = dw * 0.012;
+    ctx.drawImage(appleLayer, ax, ay, aw, ah);
     ctx.restore();
   }
+  if(era.fixedSlot && artwork && appleLayer.complete && appleLayer.naturalWidth){
+    const fs = era.fixedSlot;
+    const fx = dx + (fs.left/100) * dw;
+    const fy = dy + (fs.top/100) * dh;
+    const fw = (fs.width/100) * dw;
+    const fh = (fs.height/100) * dh;
+    const ar = appleLayer.naturalWidth / appleLayer.naturalHeight;
+    let cw = fw, ch = fw / ar;
+    if(ch > fh){ ch = fh; cw = fh * ar; }
+    const cx = fx + (fw - cw)/2;
+    const cy = fy + (fh - ch)/2;
+    ctx.save();
+    ctx.filter = 'grayscale(1)';
+    ctx.drawImage(appleLayer, cx, cy, cw, ch);
+    ctx.restore();
+  }
+}
 
-  /* newspaper text block */
+const HEADLINES = {
+  paris:   'GOLDEN APPLE IDENTIFIED',
+  durer:   'DÜRER PAINTS THE FRUIT',
+  newton:  'APPLE STRIKES NEWTON',
+  cezanne: 'CÉZANNE’S TABLE REVEALED',
+  bigapple:'CITY STEALS APPLE’S NAME'
+};
+
+const FRAME_FRAC = { left:0.1135, right:0.8843, top:0.0899, bottom:0.9062 };
+const frameImg = new Image();
+frameImg.src = 'assets/museum-frame.png';
+
+function ensureFontsReady(){
+  if(!document.fonts) return Promise.resolve();
+  return Promise.all([
+    document.fonts.load('700 34px Caveat'),
+    document.fonts.load('400 22px Caveat')
+  ]).catch(()=>{});
+}
+function ensureFrameReady(){
+  if(frameImg.complete) return Promise.resolve();
+  return new Promise(res=>{ frameImg.onload = res; frameImg.onerror = res; });
+}
+
+/* ---- Template 1: vintage stamped postcard, handwritten note ---- */
+function drawPostcardVintage(ctx, W, H, era){
+  ctx.fillStyle = '#f3ece0';
+  ctx.fillRect(0, 0, W, H);
+
+  const pad = 34;
+  const imgW = W - pad*2, imgH = imgW * 0.75;
+  compositeArtwork(ctx, era, pad, pad, imgW, imgH);
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 6; ctx.strokeRect(pad, pad, imgW, imgH);
+  ctx.strokeStyle = 'rgba(0,0,0,0.15)'; ctx.lineWidth = 1; ctx.strokeRect(pad, pad, imgW, imgH);
+
+  let y = pad + imgH + 26;
+  ctx.setLineDash([3,4]);
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W-pad, y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  /* postmark stamp, sitting in the written card like a real postcard */
+  const pmX = W - pad - 46, pmY = y + 46, pmR = 36;
+  ctx.save();
+  ctx.translate(pmX, pmY);
+  ctx.rotate(-0.15);
+  ctx.strokeStyle = 'rgba(178,58,58,0.65)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(0, 0, pmR, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(0, 0, pmR-6, 0, Math.PI*2); ctx.stroke();
+  ctx.font = 'bold 10px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(178,58,58,0.75)';
+  ctx.fillText('APPLE NO.129', 0, -5);
+  ctx.fillText(era.year.toUpperCase(), 0, 9);
+  for(let i=0;i<5;i++){
+    const a0 = (i/5) * Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a0)*(pmR+4), Math.sin(a0)*(pmR+4));
+    ctx.lineTo(Math.cos(a0)*(pmR+13), Math.sin(a0)*(pmR+13));
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  /* handwritten date, top-left of the card */
+  ctx.save();
+  ctx.translate(pad + 10, y + 34);
+  ctx.rotate(-0.03);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#7a5a3a';
+  ctx.font = '400 22px Caveat, cursive';
+  ctx.fillText(era.year, 0, 0);
+  ctx.restore();
+
+  /* handwritten message */
+  const leadFn = CALLOUTS[era.id];
+  const lead = leadFn ? leadFn(userName, appleName) : era.title;
+  ctx.fillStyle = '#5a3b28';
+  ctx.font = '700 32px Caveat, cursive';
+  let my = wrapText(ctx, lead, pad, y + 94, W - pad*2, 38, 'center');
+
+  my += 10;
+  ctx.fillStyle = '#4a3f38';
+  ctx.font = '13.5px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(era.title + ' — ' + era.year, W/2, my);
+
+  ctx.fillStyle = '#8a7a6f';
+  ctx.font = '11px Georgia, serif';
+  ctx.fillText(('APPLE ' + appleName + ' · GROWN BY ' + userName).toUpperCase(), W/2, H - 28);
+}
+
+/* ---- Template 2: blurred backdrop + polaroid photo + handwritten keepsake card ---- */
+function drawPostcardPolaroid(ctx, W, H, era){
+  ctx.save();
+  ctx.filter = 'blur(18px) saturate(0.75)';
+  compositeArtwork(ctx, era, -30, -30, W+60, H+60);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,0.58)';
+  ctx.fillRect(0, 0, W, H);
+
+  const photoW = 400, photoH = 300, bSide = 14, bBottom = 54;
+  const cardW = photoW + bSide*2, cardH = photoH + bSide + bBottom;
+  const cx = W/2, cardX = (W-cardW)/2, cardY = 54;
+  ctx.save();
+  ctx.translate(cx, cardY + cardH/2);
+  ctx.rotate(-0.035);
+  ctx.translate(-cx, -(cardY + cardH/2));
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 10;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(cardX, cardY, cardW, cardH);
+  ctx.shadowColor = 'transparent';
+  compositeArtwork(ctx, era, cardX + bSide, cardY + bSide, photoW, photoH);
+  ctx.restore();
+
+  const noteY = cardY + cardH + 44, noteH = 270, noteW = 560, noteX = (W-noteW)/2;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.18)';
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
+  ctx.fillStyle = '#fdfbf6';
+  ctx.fillRect(noteX, noteY, noteW, noteH);
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1;
+  ctx.strokeRect(noteX, noteY, noteW, noteH);
+
+  const leadFn = CALLOUTS[era.id];
+  const lead = leadFn ? leadFn(userName, appleName) : era.title;
+  ctx.fillStyle = '#5a3b28';
+  ctx.font = '700 30px Caveat, cursive';
+  let ny = wrapText(ctx, lead, noteX + 26, noteY + 48, noteW - 52, 36, 'center');
+
+  ny += 14;
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(noteX+40, ny); ctx.lineTo(noteX+noteW-40, ny); ctx.stroke();
+  ny += 24;
+
+  ctx.fillStyle = '#6b5d52';
+  ctx.font = '700 11px "Courier New", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText((era.title + '  ·  ' + era.year).toUpperCase(), W/2, ny);
+
+  ctx.fillStyle = '#9a8c80';
+  ctx.font = '700 10px "Courier New", monospace';
+  ctx.fillText(('APPLE ' + appleName + '  ·  GROWN BY ' + userName).toUpperCase(), W/2, H - 26);
+}
+
+/* ---- Template 3: newspaper front page, masthead + banner headline ---- */
+function drawGazette(ctx, W, H, era){
+  const pad = 40;
   ctx.fillStyle = '#f6efe6';
-  ctx.fillRect(0, IMG_H, W, TXT_H);
+  ctx.fillRect(0, 0, W, H);
 
-  ctx.strokeStyle = '#1b1210';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(56, IMG_H+34); ctx.lineTo(W-56, IMG_H+34); ctx.stroke();
+  ctx.strokeStyle = '#1b1210'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad, 36); ctx.lineTo(W-pad, 36); ctx.stroke();
   ctx.lineWidth = 0.75;
-  ctx.beginPath(); ctx.moveTo(56, IMG_H+40); ctx.lineTo(W-56, IMG_H+40); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pad, 41); ctx.lineTo(W-pad, 41); ctx.stroke();
+
+  ctx.font = 'bold 11px Georgia, serif';
+  ctx.fillStyle = '#6b5d52';
+  ctx.textAlign = 'left';
+  ctx.fillText(era.year.toUpperCase(), pad, 60);
+  ctx.textAlign = 'right';
+  ctx.fillText('APPLE NO.129', W-pad, 60);
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#b23a3a';
-  ctx.font = 'bold 13px Georgia, "Times New Roman", serif';
-  ctx.fillText((era.year + ' — APPLE NO.129 GAZETTE').toUpperCase(), W/2, IMG_H+66);
+  ctx.fillStyle = '#1b1210';
+  ctx.font = 'bold 32px Georgia, "Times New Roman", serif';
+  ctx.fillText('THE APPLE GAZETTE', W/2, 96);
 
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(pad, 112); ctx.lineTo(W-pad, 112); ctx.stroke();
+  ctx.lineWidth = 0.75;
+  ctx.beginPath(); ctx.moveTo(pad, 117); ctx.lineTo(W-pad, 117); ctx.stroke();
+
+  const headline = HEADLINES[era.id] || era.title.toUpperCase();
+  ctx.fillStyle = '#15100e';
+  ctx.font = '900 46px "Arial Black", Impact, sans-serif';
+  let y = wrapText(ctx, headline, pad, 172, W - pad*2, 50, 'center');
+
+  y += 8;
   const leadFn = NEWSLEADS[era.id];
   const lead = leadFn ? leadFn(userName, appleName) : '';
-  ctx.fillStyle = '#1b1210';
-  ctx.font = 'bold 25px Georgia, "Times New Roman", serif';
-  let y = wrapText(ctx, lead, 56, IMG_H+112, W-112, 32, 'center');
-
-  y += 10;
-  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(56, y); ctx.lineTo(W-56, y); ctx.stroke();
-  y += 28;
-
   ctx.fillStyle = '#2a2320';
-  ctx.font = '15px Georgia, "Times New Roman", serif';
-  y = wrapText(ctx, era.story, 56, y, W-112, 23, 'left');
+  ctx.font = 'italic 15px Georgia, "Times New Roman", serif';
+  y = wrapText(ctx, lead, pad + 20, y + 28, W - pad*2 - 40, 21, 'center');
+
+  y += 14;
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W-pad, y); ctx.stroke();
+  y += 26;
+
+  const imgW = 460, imgH = imgW * 0.75, imgX = (W - imgW)/2;
+  compositeArtwork(ctx, era, imgX, y, imgW, imgH);
+  ctx.strokeStyle = '#1b1210'; ctx.lineWidth = 2;
+  ctx.strokeRect(imgX, y, imgW, imgH);
+
+  y += imgH + 18;
+  ctx.fillStyle = '#6b5d52';
+  ctx.font = 'italic 11px Georgia, serif';
+  ctx.fillText(era.title, W/2, y);
+
+  y += 26;
+  ctx.fillStyle = '#231c19';
+  ctx.font = '14.5px Georgia, "Times New Roman", serif';
+  y = wrapText(ctx, era.story, 70, y, W - 140, 21, 'left');
+
+  y += 16;
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W-pad, y); ctx.stroke();
+  y += 26;
+
+  ctx.fillStyle = '#8a7a6f';
+  ctx.font = 'bold 10px Georgia, "Times New Roman", serif';
+  ctx.fillText((era.year + '  ·  APPLE ' + appleName + '  ·  GROWN BY ' + userName).toUpperCase(), W/2, y);
+
+  return y + 30;
+}
+
+/* ---- Template 4: museum wall frame using the uploaded ornate gold frame ---- */
+function drawMuseumFrame(ctx, W, H, era){
+  const wall = ctx.createLinearGradient(0, 0, 0, H);
+  wall.addColorStop(0, '#2f2823');
+  wall.addColorStop(1, '#1c1714');
+  ctx.fillStyle = wall;
+  ctx.fillRect(0, 0, W, H);
+  const vg = ctx.createRadialGradient(W/2, H*0.3, W*0.15, W/2, H*0.3, W*0.8);
+  vg.addColorStop(0, 'rgba(255,255,255,0.05)');
+  vg.addColorStop(1, 'rgba(0,0,0,0.2)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+
+  const marginX = 50, frameY = 40;
+  const frameW = W - marginX*2;
+  const frameAR = (frameImg.naturalWidth && frameImg.naturalHeight) ? (frameImg.naturalHeight/frameImg.naturalWidth) : 1.26;
+  const frameH = frameW * frameAR;
+  const frameX = marginX;
+
+  const ix = frameX + FRAME_FRAC.left*frameW;
+  const iy = frameY + FRAME_FRAC.top*frameH;
+  const iw = (FRAME_FRAC.right - FRAME_FRAC.left) * frameW;
+  const ih = (FRAME_FRAC.bottom - FRAME_FRAC.top) * frameH;
+
+  ctx.fillStyle = '#0c0a09';
+  ctx.fillRect(ix, iy, iw, ih);
+  compositeArtwork(ctx, era, ix, iy, iw, ih);
+
+  if(frameImg.complete && frameImg.naturalWidth){
+    ctx.drawImage(frameImg, frameX, frameY, frameW, frameH);
+  }
+
+  const plaqueY = frameY + frameH + 24, plaqueH = 140, plaqueW = frameW, plaqueX = frameX;
+  ctx.fillStyle = '#1a1512';
+  ctx.fillRect(plaqueX, plaqueY, plaqueW, plaqueH);
+  ctx.strokeStyle = '#caa149'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(plaqueX+4, plaqueY+4, plaqueW-8, plaqueH-8);
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#8a7a6f';
-  ctx.font = 'bold 11px Georgia, "Times New Roman", serif';
-  ctx.fillText(('APPLE ' + appleName + ' · GROWN BY ' + userName).toUpperCase(), W/2, IMG_H+TXT_H-24);
+  ctx.fillStyle = '#f0e6d2';
+  ctx.font = '600 20px Georgia, "Times New Roman", serif';
+  ctx.fillText(era.title, W/2, plaqueY + 42);
 
+  ctx.font = 'italic 13px Georgia, serif';
+  ctx.fillStyle = '#caa149';
+  ctx.fillText('Apple No.129 Collection · ' + era.year, W/2, plaqueY + 68);
+
+  ctx.font = '11px Georgia, serif';
+  ctx.fillStyle = 'rgba(240,230,210,0.72)';
+  ctx.fillText(('Grown by ' + userName + ' · named ' + appleName).toUpperCase(), W/2, plaqueY + 94);
+
+  return plaqueY + plaqueH + 30;
+}
+
+function drawPlainPhoto(ctx, W, H, era){
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+  const border = 40;
+  const imgW = W - border*2, imgH = imgW * 0.75;
+  compositeArtwork(ctx, era, border, border, imgW, imgH);
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(border, border, imgW, imgH);
+}
+
+const POSTCARD_TEMPLATES = [
+  { id:'plain-photo',       label:'Just the photo',      w:700, h:545,  draw:drawPlainPhoto },
+  { id:'postcard-vintage',  label:'Postcard — Vintage',  w:700, h:860,  draw:drawPostcardVintage },
+  { id:'postcard-polaroid', label:'Postcard — Keepsake', w:700, h:850,  draw:drawPostcardPolaroid },
+  { id:'gazette',           label:'Newspaper clipping',   w:700, h:1500, draw:drawGazette, trim:true },
+  { id:'museum-frame',      label:'Museum frame',         w:700, h:1100, draw:drawMuseumFrame, trim:true }
+];
+
+function buildPostcardCanvas(era, tpl){
+  const canvas = document.createElement('canvas');
+  canvas.width = tpl.w;
+  canvas.height = tpl.h;
+  const ctx = canvas.getContext('2d');
+  const usedH = tpl.draw(ctx, tpl.w, tpl.h, era);
+  if(tpl.trim && usedH){
+    const trimmed = document.createElement('canvas');
+    trimmed.width = tpl.w;
+    trimmed.height = Math.ceil(usedH);
+    trimmed.getContext('2d').drawImage(canvas, 0, 0);
+    return trimmed;
+  }
+  return canvas;
+}
+
+function downloadCanvas(canvas, era, tplId){
   const link = document.createElement('a');
-  link.download = 'apple129-' + era.id + '-postcard.png';
+  link.download = 'apple129-' + era.id + '-' + tplId + '.png';
   link.href = canvas.toDataURL('image/png');
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 }
 
+function shareCanvas(canvas){
+  try{
+    localStorage.setItem('apple129_share_draft', canvas.toDataURL('image/png'));
+  }catch(e){ showErr('share failed: ' + e.message); return; }
+  window.location.href = 'forum.html';
+}
+
+async function openPostcardModal(mode){
+  await Promise.all([ensureFontsReady(), ensureFrameReady()]);
+  const era = ERAS[current];
+  const grid = document.getElementById('postcardGrid');
+  grid.innerHTML = '';
+  document.getElementById('postcardHint').textContent = mode === 'share'
+    ? 'Click a version to share it to the Orchard Board.'
+    : 'Click a version to save it to your device.';
+  POSTCARD_TEMPLATES.forEach(tpl=>{
+    const canvas = buildPostcardCanvas(era, tpl);
+    canvas.className = 'postcard-thumb';
+    canvas.title = mode === 'share' ? 'Click to share this version' : 'Click to save this version';
+    canvas.addEventListener('click', ()=>{
+      if(mode === 'share') shareCanvas(canvas);
+      else downloadCanvas(canvas, era, tpl.id);
+    });
+
+    const label = document.createElement('div');
+    label.className = 'postcard-label';
+    label.textContent = tpl.label;
+
+    const cell = document.createElement('div');
+    cell.className = 'postcard-cell';
+    cell.appendChild(canvas);
+    cell.appendChild(label);
+    grid.appendChild(cell);
+  });
+  document.getElementById('postcardModal').style.display = 'flex';
+}
+
+function closePostcardModal(){
+  document.getElementById('postcardModal').style.display = 'none';
+}
+
 document.getElementById('exportBtn').addEventListener('click', ()=>{
-  try{ exportPostcard(); }catch(e){ showErr('export failed: ' + e.message); }
+  openPostcardModal('download').catch(e=> showErr('export failed: ' + e.message));
+});
+document.getElementById('shareBtn').addEventListener('click', ()=>{
+  openPostcardModal('share').catch(e=> showErr('share failed: ' + e.message));
+});
+document.getElementById('postcardClose').addEventListener('click', closePostcardModal);
+document.getElementById('postcardModal').addEventListener('click', e=>{
+  if(e.target.id === 'postcardModal') closePostcardModal();
 });
 
 renderEra(current);
+</script>
+<script>
+(function(){
+  var CLICK_SOUND_B64 = "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VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tyZHSP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+3BkdQ/wAABpAAAACAAADSAAAAEAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjk5LjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tyZHSP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+3BkdQ/wAABpAAAACAAADSAAAAEAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==";
+  var clickAudioEl = null;
+  function playUiClickSound(){
+    try{
+      if(!clickAudioEl){ clickAudioEl = new Audio('data:audio/mp3;base64,' + CLICK_SOUND_B64); }
+      var a = clickAudioEl.cloneNode(true);
+      a.volume = 0.55;
+      a.play().catch(function(){});
+    }catch(e){}
+  }
+  document.addEventListener('click', function(e){
+    var el = e.target.closest('button, a');
+    if(!el) return;
+    if(el.classList.contains('scent-btn') || el.classList.contains('bite-btn')) return;
+    if(el.dataset && el.dataset.noClickSound) return;
+    playUiClickSound();
+  }, true);
+})();
 </script>
 </body>
 </html>

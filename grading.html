@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apple No.129 — Grading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Notable&family=Pathway+Extreme:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{ --ink:#1b1210; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;background:#ffffff;}
+  body{font-family:'Pathway Extreme',sans-serif;color:var(--ink);min-height:100vh;display:flex;flex-direction:column;}
+
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;padding:22px 5vw 0;}
+  .back{color:var(--ink);text-decoration:none;font-weight:700;font-size:14px;opacity:0.8;cursor:pointer;}
+  .back:hover{opacity:1;}
+  .brandmark{font-family:'Notable',sans-serif;font-size:18px;letter-spacing:0.02em;opacity:0.85;}
+  .kicker{text-align:center;font-weight:800;font-size:clamp(14px,1.8vw,20px);text-transform:uppercase;letter-spacing:0.03em;opacity:0.85;margin-top:4px;}
+  .lede{max-width:560px;margin:6px auto 0;text-align:center;font-size:12.5px;line-height:1.6;opacity:0.6;padding:0 6vw;}
+
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;padding:18px 4vw 50px;gap:26px;}
+
+  .apple-id{display:flex;align-items:center;gap:16px;background:rgba(0,0,0,0.03);border-radius:16px;padding:12px 20px;}
+  .apple-id img{width:62px;height:62px;object-fit:contain;filter:drop-shadow(0 6px 8px rgba(0,0,0,0.2));}
+  .apple-id .empty{font-size:12px;opacity:0.5;max-width:220px;}
+  .apple-id-text{font-size:13px;line-height:1.5;}
+  .apple-id-text b{font-weight:800;}
+
+  .gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px;width:100%;max-width:980px;}
+  .gauge-card{
+    background:#fff;border:1.5px solid rgba(0,0,0,0.08);border-radius:18px;
+    padding:18px 14px 20px;text-align:center;box-shadow:0 8px 20px rgba(0,0,0,0.05);
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+  }
+  .gauge-label{font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;opacity:0.6;}
+  .gauge-svg{width:100%;max-width:170px;}
+  .gauge-needle{transform-box:view-box;transform-origin:100px 100px;transform:rotate(-90deg);transition:transform 1.2s cubic-bezier(.34,1.3,.64,1);}
+  .gauge-progress{transition:stroke-dashoffset 1.2s cubic-bezier(.34,1.3,.64,1);}
+  .gauge-value{font-family:'Notable',sans-serif;font-size:19px;margin-top:-6px;}
+  .gauge-standard{font-size:10.5px;opacity:0.5;}
+  .gauge-badge{
+    margin-top:4px;font-weight:800;font-size:10.5px;letter-spacing:0.06em;
+    padding:3px 10px;border-radius:999px;
+  }
+  .gauge-badge.pass{background:rgba(76,175,109,0.15);color:#2f8350;}
+  .gauge-badge.fail{background:rgba(200,16,46,0.12);color:#c8102e;}
+
+  .viewResultsBtn{
+    font-family:'Notable',sans-serif;font-weight:400;font-size:15px;color:#fff;
+    background:linear-gradient(135deg,#c75a56 0%, #e8a6a0 55%, #f0c2b8 100%);
+    border:none;border-radius:999px;padding:0.65em 1.6em 0.75em;cursor:pointer;
+    box-shadow:0 8px 18px rgba(60,10,10,0.25), inset 0 2px 4px rgba(255,255,255,0.35);
+    margin-top:8px;opacity:0;transition:opacity .4s ease;
+  }
+  .viewResultsBtn.ready{opacity:1;}
+  .viewResultsBtn:active{transform:translateY(1px);}
+  .viewResultsBtn:disabled{cursor:not-allowed;}
+
+  #debugErr{
+    position:fixed;top:90px;left:5vw;right:5vw;z-index:50;font:11px monospace;color:#b00020;
+    background:rgba(255,255,255,0.95);border:1px solid #b00020;border-radius:8px;padding:8px;
+    display:none;white-space:pre-wrap;max-height:30vh;overflow:auto;
+  }
+</style>
+</head>
+<body>
+<div id="debugErr"></div>
+
+<div class="topbar">
+  <a class="back" id="backLink">&larr; BACK</a>
+  <div class="brandmark">APPLE NO.129</div>
+</div>
+<div class="kicker">Official grading</div>
+<div class="lede">Every number here follows real commercial grading criteria for dessert apples — the same standard that decides what reaches a supermarket shelf.</div>
+
+<div class="stage">
+  <div class="apple-id" id="appleId">
+    <div class="empty">No apple found — go back and shape, draw or upload one first.</div>
+  </div>
+
+  <div class="gauges" id="gauges"></div>
+
+  <button class="viewResultsBtn" id="viewResultsBtn" disabled>VIEW RESULTS &rarr;</button>
+</div>
+
+<script>
+function showErr(msg){
+  const el = document.getElementById('debugErr');
+  el.style.display = 'block';
+  el.textContent += msg + '\n';
+}
+window.addEventListener('error', e=> showErr('Error: ' + e.message));
+
+document.getElementById('backLink').addEventListener('click', ()=>{
+  if(document.referrer){ history.back(); } else { window.location.href = 'naming.html'; }
+});
+
+let userName = 'You', appleName = 'your apple';
+try{
+  userName = localStorage.getItem('apple129_username') || userName;
+  appleName = localStorage.getItem('apple129_applename') || appleName;
+}catch(e){}
+
+let artwork = null;
+try{ artwork = localStorage.getItem('apple129_artwork'); }catch(e){}
+
+let shapeData = null;
+try{ shapeData = JSON.parse(localStorage.getItem('apple129_shape') || 'null'); }catch(e){}
+
+let brix = null;
+try{
+  const b = localStorage.getItem('apple129_brix');
+  brix = b !== null ? parseFloat(b) : null;
+}catch(e){}
+
+/* ---------- real commercial standards this project already researched ---------- */
+const STD = {
+  brix:   { min:12,  max:12.6 },
+  size:   { min:68,  max:71   },
+  weight: { min:146, max:166  }   /* derived below from the 20kg / 128-count standard */
+};
+
+function hexToHsl(hex){
+  const m = hex.replace('#','');
+  const r = parseInt(m.substr(0,2),16)/255, g = parseInt(m.substr(2,2),16)/255, b = parseInt(m.substr(4,2),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max+min)/2;
+  if(max === min){ h = 0; s = 0; }
+  else{
+    const d = max-min;
+    s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+    if(max === r) h = (g-b)/d + (g<b?6:0);
+    else if(max === g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h *= 60;
+  }
+  return { h, s, l };
+}
+
+function scoreFromRange(value, min, max, tolerance){
+  if(value >= min && value <= max) return { score:100, pass:true };
+  const d = value < min ? (min-value) : (value-max);
+  return { score: Math.max(0, Math.round(100 - (d/tolerance)*100)), pass:false };
+}
+
+/* 3D path: the standard is the modeled apple exactly as it came in, scale (1,1,1) on every
+   axis — no stretch, no squash, no uniform resize. Any departure from that pristine model,
+   on any single axis, costs points; it does not matter whether the axes stay in proportion
+   to each other. */
+function scoreShapeFrom3D(scale){
+  const passBand = 0.03, tol = 0.5;
+  const maxDev = Math.max(Math.abs(scale.x-1), Math.abs(scale.y-1), Math.abs(scale.z-1));
+  if(maxDev <= passBand) return { score:100, pass:true };
+  const d = maxDev - passBand;
+  return { score: Math.max(0, Math.round(100 - (d/tol)*100)), pass:false };
+}
+
+/* Image-analysis path: a bounding-box aspect ratio near 1 is not enough on its own —
+   a thin scribble can have a roughly square bounding box too. fillRatio (how much of its
+   own bounding box the shape actually fills) catches that: a circle fills ~78.5% of its
+   box; a line or outline fills only a sliver. Score is the worse of the two checks. */
+function scoreShapeFromImage(ratio, fillRatio){
+  const ratioLo = 0.93, ratioHi = 1.07, ratioTol = 0.25;
+  let ratioScore = 100;
+  if(ratio < ratioLo || ratio > ratioHi){
+    const d = ratio < ratioLo ? (ratioLo-ratio) : (ratio-ratioHi);
+    ratioScore = Math.max(0, 100 - (d/ratioTol)*100);
+  }
+  const idealFill = 0.785, fillTol = 0.3;
+  const fillD = Math.abs(fillRatio - idealFill);
+  const fillScore = Math.max(0, 100 - (fillD/fillTol)*100);
+  const score = Math.round(Math.min(ratioScore, fillScore));
+  return { score, pass: score >= 90 };
+}
+
+function scoreColor(h, s, l){
+  const hueDist = Math.min(Math.abs(h-0), Math.abs(h-360));
+  const pass = hueDist <= 20 && s >= 0.35 && l >= 0.22 && l <= 0.58;
+  let penalty = hueDist*2;
+  if(s < 0.35) penalty += (0.35-s)*200;
+  if(l < 0.22) penalty += (0.22-l)*200;
+  if(l > 0.58) penalty += (l-0.58)*200;
+  return { score: Math.max(0, Math.round(100-penalty)), pass };
+}
+
+function weightFromDiameter(mm){
+  return 156 * Math.pow(mm/69.5, 3);
+}
+
+function analyzeArtwork(img){
+  const c = document.createElement('canvas');
+  const scale = Math.min(1, 300/img.naturalWidth);
+  c.width = Math.round(img.naturalWidth*scale);
+  c.height = Math.round(img.naturalHeight*scale);
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, c.width, c.height);
+  const data = ctx.getImageData(0, 0, c.width, c.height).data;
+  let minX=c.width, maxX=0, minY=c.height, maxY=0;
+  let rSum=0, gSum=0, bSum=0, n=0;
+  for(let y=0; y<c.height; y+=2){
+    for(let x=0; x<c.width; x+=2){
+      const i = (y*c.width+x)*4;
+      const a = data[i+3];
+      if(a > 20){
+        if(x<minX) minX=x; if(x>maxX) maxX=x;
+        if(y<minY) minY=y; if(y>maxY) maxY=y;
+        rSum += data[i]; gSum += data[i+1]; bSum += data[i+2]; n++;
+      }
+    }
+  }
+  if(n === 0) return null;
+  const bboxW = maxX-minX, bboxH = maxY-minY;
+  const avgR = rSum/n, avgG = gSum/n, avgB = bSum/n;
+  const hex = '#' + [avgR,avgG,avgB].map(v=> Math.round(v).toString(16).padStart(2,'0')).join('');
+  /* fillRatio: how much of its own bounding box the shape actually fills.
+     A circle fills ~78.5% of its bounding box; a thin scribble or line fills only a tiny sliver.
+     Sampled at step 2, so bbox area in the same units is (bboxW/2)*(bboxH/2). */
+  const fillRatio = n / Math.max(1, (bboxW/2) * (bboxH/2));
+  return {
+    ratio: bboxW / bboxH,
+    fillRatio: fillRatio,
+    widthFrac: bboxW / c.width,
+    hsl: hexToHsl(hex)
+  };
+}
+
+function buildGaugeSVG(id){
+  return `
+  <svg viewBox="0 0 200 115" class="gauge-svg">
+    <path d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="rgba(0,0,0,0.1)" stroke-width="14" stroke-linecap="round"/>
+    <path id="${id}-progress" class="gauge-progress" d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="#c8102e" stroke-width="14" stroke-linecap="round"
+      stroke-dasharray="267.04" stroke-dashoffset="267.04"/>
+    <g id="${id}-needle" class="gauge-needle">
+      <line x1="100" y1="100" x2="100" y2="24" stroke="#1b1210" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="100" cy="100" r="8" fill="#1b1210"/>
+    </g>
+  </svg>`;
+}
+
+function renderGauge(container, id, label, score, pass, valueText, standardText){
+  const card = document.createElement('div');
+  card.className = 'gauge-card';
+  card.innerHTML = `
+    <div class="gauge-label">${label}</div>
+    ${buildGaugeSVG(id)}
+    <div class="gauge-value">${valueText}</div>
+    <div class="gauge-standard">Standard: ${standardText}</div>
+    <div class="gauge-badge ${pass ? 'pass':'fail'}">${pass ? 'MEETS GRADE' : 'OUT OF SPEC'}</div>
+  `;
+  container.appendChild(card);
+
+  const arcLen = 267.04;
+  const color = score >= 80 ? '#4caf6d' : score >= 50 ? '#e0a83a' : '#c8102e';
+  const angle = -90 + (score/100)*180;
+  setTimeout(()=>{
+    const progress = document.getElementById(id+'-progress');
+    const needle = document.getElementById(id+'-needle');
+    progress.style.stroke = color;
+    progress.style.strokeDashoffset = (arcLen - (score/100)*arcLen);
+    needle.style.transform = 'rotate(' + angle + 'deg)';
+  }, 250);
+}
+
+function runGrading(){
+  const gaugesEl = document.getElementById('gauges');
+  const results = [];
+  const details = [];
+
+  /* sweetness */
+  const brixVal = brix !== null ? brix : (STD.brix.min + STD.brix.max)/2;
+  const brixR = scoreFromRange(brixVal, STD.brix.min, STD.brix.max, 3);
+  results.push(brixR.pass);
+  details.push({ label:'Sweetness', score:brixR.score, pass:brixR.pass,
+    valueText: brixVal.toFixed(1) + '°Brix' });
+  renderGauge(gaugesEl, 'g-sweet', 'Sweetness', brixR.score, brixR.pass,
+    brixVal.toFixed(1) + '°Brix', STD.brix.min + '–' + STD.brix.max + '°Brix');
+
+  let diameter, shapeRatio, hsl, fillRatio;
+  const fromImage = !(shapeData && shapeData.scale);
+  if(shapeData && shapeData.scale){
+    diameter = 70 * ((shapeData.scale.x + shapeData.scale.z)/2);
+    shapeRatio = shapeData.scale.y / ((shapeData.scale.x + shapeData.scale.z)/2);
+    hsl = hexToHsl(shapeData.color || '#c8102e');
+  }
+
+  function finishWithAnalysis(an){
+    if(!diameter){
+      if(an){
+        diameter = an.widthFrac * 90;
+        shapeRatio = an.ratio;
+        fillRatio = an.fillRatio;
+        hsl = an.hsl;
+      } else {
+        diameter = (STD.size.min+STD.size.max)/2;
+        shapeRatio = 1;
+        fillRatio = 0.785;
+        hsl = { h:0, s:0.6, l:0.4 };
+      }
+    }
+
+    const shapeR = fromImage ? scoreShapeFromImage(shapeRatio, fillRatio) : scoreShapeFrom3D(shapeData.scale);
+    results.push(shapeR.pass);
+    details.push({ label:'Shape', score:shapeR.score, pass:shapeR.pass,
+      valueText: shapeR.pass ? 'Well-formed' : 'Irregular' });
+    renderGauge(gaugesEl, 'g-shape', 'Shape', shapeR.score, shapeR.pass,
+      shapeR.pass ? 'Well-formed' : 'Irregular', 'Symmetric, characteristic shape');
+
+    const colorR = scoreColor(hsl.h, hsl.s, hsl.l);
+    results.push(colorR.pass);
+    details.push({ label:'Color', score:colorR.score, pass:colorR.pass,
+      valueText: colorR.pass ? 'Characteristic red' : 'Off-standard hue' });
+    renderGauge(gaugesEl, 'g-color', 'Color', colorR.score, colorR.pass,
+      colorR.pass ? 'Characteristic red' : 'Off-standard hue', 'Solid, characteristic red blush');
+
+    const sizeR = scoreFromRange(diameter, STD.size.min, STD.size.max, 15);
+    results.push(sizeR.pass);
+    details.push({ label:'Size', score:sizeR.score, pass:sizeR.pass,
+      valueText: Math.round(diameter) + 'mm' + (shapeData ? '' : ' (est.)') });
+    renderGauge(gaugesEl, 'g-size', 'Size', sizeR.score, sizeR.pass,
+      Math.round(diameter) + 'mm' + (shapeData ? '' : ' (est.)'), STD.size.min + '–' + STD.size.max + 'mm');
+
+    const weight = weightFromDiameter(diameter);
+    const weightR = scoreFromRange(weight, STD.weight.min, STD.weight.max, 40);
+    results.push(weightR.pass);
+    details.push({ label:'Weight', score:weightR.score, pass:weightR.pass,
+      valueText: Math.round(weight) + 'g' + (shapeData ? '' : ' (est.)') });
+    renderGauge(gaugesEl, 'g-weight', 'Weight', weightR.score, weightR.pass,
+      Math.round(weight) + 'g' + (shapeData ? '' : ' (est.)'), STD.weight.min + '–' + STD.weight.max + 'g');
+
+    showVerdict(results, details);
+  }
+
+  if(!shapeData && artwork){
+    const img = new Image();
+    img.onload = ()=> finishWithAnalysis(analyzeArtwork(img));
+    img.onerror = ()=> finishWithAnalysis(null);
+    img.src = artwork;
+  } else {
+    finishWithAnalysis(null);
+  }
+}
+
+function showVerdict(results, details){
+  const allPass = results.every(r=>r);
+  const btn = document.getElementById('viewResultsBtn');
+  btn.disabled = false;
+  btn.classList.add('ready');
+  btn.addEventListener('click', ()=>{
+    try{
+      localStorage.setItem('apple129_gradeResult', allPass ? 'pass' : 'fail');
+      localStorage.setItem('apple129_gradeDetails', JSON.stringify(details));
+    }catch(e){}
+    window.location.href = 'result.html';
+  });
+}
+
+try{
+  if(artwork){
+    const idEl = document.getElementById('appleId');
+    idEl.innerHTML = '<img src="' + artwork + '" alt=""><div class="apple-id-text">' + userName + '’s apple<br><b>' + appleName + '</b></div>';
+  }
+}catch(e){ showErr('could not load apple preview: ' + e.message); }
+
+if(artwork || shapeData){
+  runGrading();
+} else {
+  document.getElementById('gauges').innerHTML = '<div style="opacity:0.5;font-size:13px;">Nothing to grade yet.</div>';
+}
+</script>
+<script>
+(function(){
+  var CLICK_SOUND_B64 = "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VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tyZHSP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+3BkdQ/wAABpAAAACAAADSAAAAEAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjk5LjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//tyZHSP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVX/+3BkdQ/wAABpAAAACAAADSAAAAEAAAGkAAAAIAAANIAAAARVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVMQU1FMy45OS41VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7cmR0j/AAAGkAAAAIAAANIAAAAQAAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMuOTkuNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//twZHUP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVQ==";
+  var clickAudioEl = null;
+  function playUiClickSound(){
+    try{
+      if(!clickAudioEl){ clickAudioEl = new Audio('data:audio/mp3;base64,' + CLICK_SOUND_B64); }
+      var a = clickAudioEl.cloneNode(true);
+      a.volume = 0.55;
+      a.play().catch(function(){});
+    }catch(e){}
+  }
+  document.addEventListener('click', function(e){
+    var el = e.target.closest('button, a');
+    if(!el) return;
+    if(el.classList.contains('scent-btn') || el.classList.contains('bite-btn')) return;
+    if(el.dataset && el.dataset.noClickSound) return;
+    playUiClickSound();
+  }, true);
+})();
+</script>
+</body>
+</html>
